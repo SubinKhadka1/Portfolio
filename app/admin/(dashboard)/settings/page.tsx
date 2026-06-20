@@ -1,5 +1,5 @@
 import SiteSettingsForm from "@/components/admin/SiteSettingsForm";
-import { getSiteSettings } from "@/lib/site-settings";
+import { getSiteSettings } from "@/lib/site-settings-read";
 
 export default async function AdminSettingsPage() {
   const settings = await getSiteSettings();

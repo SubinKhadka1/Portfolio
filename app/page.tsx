@@ -9,7 +9,7 @@ import Testimonials from "@/components/Testimonials";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import { getClients, getDesigns, getVideos } from "@/lib/projects";
-import { getSiteSettings } from "@/lib/site-settings";
+import { getSiteSettings } from "@/lib/site-settings-read";
 
 export default async function Home() {
   const [designs, videos, clients, settings] = await Promise.all([

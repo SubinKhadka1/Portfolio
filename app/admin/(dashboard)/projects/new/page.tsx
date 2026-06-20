@@ -1,5 +1,5 @@
 import ProjectForm from "@/components/admin/ProjectForm";
-import { getSiteSettings } from "@/lib/site-settings";
+import { getSiteSettings } from "@/lib/site-settings-read";
 import type { ProjectType } from "@/lib/types/database";
 
 type PageProps = {

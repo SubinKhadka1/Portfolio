@@ -4,7 +4,7 @@ import DesignRowManager from "@/components/admin/DesignRowManager";
 import ClientRowManager from "@/components/admin/ClientRowManager";
 import ProjectGrid from "@/components/admin/ProjectGrid";
 import { getProjects } from "@/lib/projects";
-import { getSiteSettings } from "@/lib/site-settings";
+import { getSiteSettings } from "@/lib/site-settings-read";
 import type { ProjectType } from "@/lib/types/database";
 
 type PageProps = {

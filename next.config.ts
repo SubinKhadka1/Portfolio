@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
     },
     proxyClientMaxBodySize: "200mb",
   },
+  // Public media is served as static assets; avoid copying ~450MB into every serverless function.
+  outputFileTracingExcludes: {
+    "/*": ["./public/videos/**", "./public/designs/**", "./public/logos/**"],
+  },
 };
 
 export default nextConfig;

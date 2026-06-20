@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, Save, Upload } from "lucide-react";
-import type { SiteSettings } from "@/lib/site-settings";
+import type { SiteSettings } from "@/lib/site-settings-read";
 
 function SettingSelect({
   label,

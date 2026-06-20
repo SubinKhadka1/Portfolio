@@ -1,10 +1,7 @@
 import { notFound } from "next/navigation";
 import ProjectForm from "@/components/admin/ProjectForm";
-import { getLocalProject } from "@/lib/local-portfolio";
-import { getSiteSettings } from "@/lib/site-settings";
-import { tryCreateClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
-import type { Project } from "@/lib/types/database";
+import { fetchProjectById } from "@/lib/fetch-project-by-id";
+import { getSiteSettings } from "@/lib/site-settings-read";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -12,27 +9,12 @@ type PageProps = {
 
 export default async function EditProjectPage({ params }: PageProps) {
   const { id } = await params;
-  let project: Project | null = null;
-
-  if (!isSupabaseConfigured()) {
-    project = await getLocalProject(id);
-  } else {
-    const supabase = await tryCreateClient();
-    if (supabase) {
-      const { data } = await supabase
-        .from("projects")
-        .select("*, categories(*)")
-        .eq("id", id)
-        .single();
-      project = (data as Project) || null;
-    } else {
-      project = await getLocalProject(id);
-    }
-  }
+  const [project, settings] = await Promise.all([
+    fetchProjectById(id),
+    getSiteSettings(),
+  ]);
 
   if (!project) notFound();
-
-  const settings = await getSiteSettings();
 
   return (
     <div className="space-y-6">
