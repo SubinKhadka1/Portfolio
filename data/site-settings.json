@@ -1,0 +1,12 @@
+{
+  "heroImage": "/Profile.png",
+  "heroAlt": "Subin Khadka",
+  "portfolioRows": 3,
+  "portfolioRepeat": 2,
+  "portfolioScrollDuration": 60,
+  "clientRows": 2,
+  "clientRepeat": 2,
+  "clientScrollDuration": 45,
+  "videoRepeat": 2,
+  "videoScrollDuration": 50
+}
