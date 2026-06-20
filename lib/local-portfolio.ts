@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import { readFileSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
+import { isNextBuildPhase } from "@/lib/is-build-time";
 import { staticProjectsForAdmin } from "@/lib/seed";
 import { marqueeSortOrder, clampMarqueeRow } from "@/lib/marquee";
 import {
@@ -166,6 +167,14 @@ async function ensureStore(): Promise<PortfolioStore> {
     }
     return migrated;
   } catch {
+    if (isNextBuildPhase()) {
+      return {
+        design: staticProjectsForAdmin("design"),
+        video: staticProjectsForAdmin("video"),
+        client: staticProjectsForAdmin("client"),
+      };
+    }
+
     const store: PortfolioStore = {
       design: staticProjectsForAdmin("design").map((p) => ({
         ...p,
@@ -184,6 +193,7 @@ async function ensureStore(): Promise<PortfolioStore> {
 }
 
 async function writeStore(store: PortfolioStore) {
+  if (isNextBuildPhase()) return;
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.writeFile(DATA_FILE, JSON.stringify(store, null, 2), "utf8");
 }

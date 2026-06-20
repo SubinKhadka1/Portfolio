@@ -25,7 +25,7 @@
 *.pem
 
 # accidental Windows-path cache folder
-C:\Users\
+"C:\\Users\\"
 
 # debug
 npm-debug.log*

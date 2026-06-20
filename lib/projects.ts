@@ -15,6 +15,24 @@ import type {
   VideoItem,
 } from "@/lib/types/database";
 
+function filterProjects(
+  projects: Project[],
+  options?: { publishedOnly?: boolean; admin?: boolean }
+) {
+  if (options?.publishedOnly !== false && !options?.admin) {
+    return projects.filter((p) => p.published);
+  }
+  return projects;
+}
+
+async function getLocalProjectsFiltered(
+  type: ProjectType,
+  options?: { publishedOnly?: boolean; admin?: boolean }
+) {
+  const projects = await getLocalProjects(type);
+  return filterProjects(projects, options);
+}
+
 export function projectToDesign(p: Project): DesignItem {
   return {
     id: p.id,
@@ -58,17 +76,13 @@ export async function getProjects(
   options?: { publishedOnly?: boolean; admin?: boolean }
 ): Promise<Project[]> {
   if (!isSupabaseConfigured()) {
-    const projects = await getLocalProjects(type);
-    const filtered =
-      options?.publishedOnly !== false && !options?.admin
-        ? projects.filter((p) => p.published)
-        : projects;
-    return filtered;
+    return getLocalProjectsFiltered(type, options);
   }
 
   const supabase = await tryCreateClient();
   if (!supabase) {
-    return options?.admin ? staticProjectsForAdmin(type) : [];
+    if (options?.admin) return staticProjectsForAdmin(type);
+    return getLocalProjectsFiltered(type, options);
   }
 
   if (options?.admin) {
@@ -90,13 +104,17 @@ export async function getProjects(
   if (error) {
     console.error(`Failed to fetch ${type} projects:`, error.message);
     if (options?.admin) return staticProjectsForAdmin(type);
-    return [];
+    return getLocalProjectsFiltered(type, options);
   }
 
   const projects = (data as Project[]) || [];
 
   if (options?.admin && projects.length === 0) {
     return staticProjectsForAdmin(type);
+  }
+
+  if (!options?.admin && projects.length === 0) {
+    return getLocalProjectsFiltered(type, options);
   }
 
   return projects;
