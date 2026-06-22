@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Play, Pause, X, Volume2, VolumeX, ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import MarqueeTrack from "@/components/MarqueeTrack";
 import { loopForMarquee } from "@/lib/marquee";
+import { useHoldZoom } from "@/lib/hold-zoom";
 import type { VideoItem } from "@/lib/types/database";
 
 const gradients = [
@@ -168,6 +169,7 @@ function ReelSlide({
 }) {
   const previewRef = useRef<HTMLVideoElement>(null);
   const [hovered, setHovered] = useState(false);
+  const { zoomed, holdProps, motionProps, shouldSuppressClick } = useHoldZoom();
 
   const clipStart = video.clipStart ?? 0;
   const clipEnd = video.clipEnd ?? 8;
@@ -214,14 +216,26 @@ function ReelSlide({
   }, [hovered, clipStart]);
 
   return (
-    <div
+    <motion.div
       role="button"
       tabIndex={0}
-      className={`reel-slide bg-gradient-to-br ${gradients[index % gradients.length]} ${hovered ? "is-hovered" : ""} cursor-pointer`}
+      {...holdProps}
+      {...motionProps}
+      className={`reel-slide bg-gradient-to-br ${gradients[index % gradients.length]} ${
+        hovered ? "is-hovered" : ""
+      } ${zoomed ? "reel-slide--zoomed" : ""} cursor-pointer`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onClick={() => onOpen()}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      onClick={() => {
+        if (shouldSuppressClick()) return;
+        onOpen();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
     >
       <video
         ref={previewRef}
@@ -266,14 +280,14 @@ function ReelSlide({
         <h3 className="text-white text-[11px] sm:text-sm font-medium leading-snug line-clamp-2">{video.title}</h3>
         <p className="text-gray-400 text-[10px] sm:text-xs leading-snug line-clamp-1 mt-0.5">{video.description}</p>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 export default function VideoShowcase({
   videos = [],
   repeat = 2,
-  scrollDuration = 50,
+  scrollDuration = 38,
 }: {
   videos?: VideoItem[];
   repeat?: number;
@@ -321,7 +335,7 @@ export default function VideoShowcase({
             Video <span className="text-purple-400">Reels</span>
           </h2>
           <p className="text-gray-500 text-sm mt-3 max-w-md mx-auto px-2">
-            Loops automatically · Tap or hover to preview · Tap any reel to watch full video
+            Auto-scroll · drag or scroll the row · hold a reel to zoom · tap to watch full video
           </p>
         </motion.div>
       </div>

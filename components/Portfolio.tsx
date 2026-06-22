@@ -4,16 +4,20 @@ import type { DesignItem } from "@/lib/types/database";
 import { loopForMarquee, groupDesignsByMarqueeRow } from "@/lib/marquee";
 import { PORTRAIT_DESIGN_IMAGES } from "@/lib/static-data";
 import MarqueeTrack from "@/components/MarqueeTrack";
+import { useHoldZoom } from "@/lib/hold-zoom";
 
 function DesignCard({ design }: { design: DesignItem }) {
   const isPortrait =
     design.aspectRatio === "portrait" || PORTRAIT_DESIGN_IMAGES.has(design.image);
+  const { zoomed, holdProps, motionProps } = useHoldZoom();
 
   return (
-    <article
+    <motion.article
+      {...holdProps}
+      {...motionProps}
       className={`design-slide group relative ${
         isPortrait ? "design-slide--portrait" : "design-slide--square"
-      }`}
+      } ${zoomed ? "design-slide--zoomed" : ""}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -22,9 +26,10 @@ function DesignCard({ design }: { design: DesignItem }) {
         className={`design-slide-img ${
           isPortrait ? "design-slide-img--portrait" : "design-slide-img--square"
         }`}
+        draggable={false}
       />
       <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-    </article>
+    </motion.article>
   );
 }
 
@@ -39,7 +44,7 @@ export default function Portfolio({
   designs = [],
   rows = 3,
   repeat = 2,
-  scrollDuration = 60,
+  scrollDuration = 42,
 }: PortfolioProps) {
   const rowData = groupDesignsByMarqueeRow(designs, rows);
   const directions: Array<"left" | "right"> = ["left", "right", "left"];
@@ -73,12 +78,12 @@ export default function Portfolio({
             Creative <span className="text-purple-400">Showcase</span>
           </h2>
           <p className="text-gray-500 text-sm mt-3 max-w-lg mx-auto leading-relaxed px-2">
-            {designs.length} design{designs.length === 1 ? "" : "s"} · {rows} row{rows === 1 ? "" : "s"} · smooth loop
+            {designs.length} design{designs.length === 1 ? "" : "s"} · {rows} row{rows === 1 ? "" : "s"} · drag or scroll a row · hold to zoom
           </p>
         </motion.div>
       </div>
 
-      <div className="relative flex flex-col gap-2 sm:gap-3 px-1 sm:px-2">
+      <div className="relative flex flex-col gap-2 sm:gap-3 px-1 sm:px-2 py-2">
         <div className="absolute left-0 top-0 bottom-0 w-8 sm:w-16 md:w-24 bg-gradient-to-r from-black to-transparent z-10 pointer-events-none" />
         <div className="absolute right-0 top-0 bottom-0 w-8 sm:w-16 md:w-24 bg-gradient-to-l from-black to-transparent z-10 pointer-events-none" />
 

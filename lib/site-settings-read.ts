@@ -21,12 +21,12 @@ const DEFAULT_SETTINGS: SiteSettings = {
   heroAlt: "Subin Khadka",
   portfolioRows: 3,
   portfolioRepeat: 2,
-  portfolioScrollDuration: 60,
+  portfolioScrollDuration: 42,
   clientRows: 2,
   clientRepeat: 2,
   clientScrollDuration: 45,
   videoRepeat: 2,
-  videoScrollDuration: 50,
+  videoScrollDuration: 38,
 };
 
 export function normalizeSiteSettings(raw: Partial<SiteSettings>): SiteSettings {
