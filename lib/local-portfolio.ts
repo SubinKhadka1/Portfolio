@@ -3,6 +3,9 @@ import { readFileSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { isNextBuildPhase } from "@/lib/is-build-time";
+import { readJsonFile, writeJsonFile } from "@/lib/json-store";
+import { isBlobStorageEnabled } from "@/lib/storage-mode";
+import { head } from "@vercel/blob";
 import { staticProjectsForAdmin } from "@/lib/seed";
 import { marqueeSortOrder, clampMarqueeRow } from "@/lib/marquee";
 import {
@@ -14,6 +17,7 @@ import type { Project, ProjectInput, ProjectType } from "@/lib/types/database";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "portfolio.json");
+const PORTFOLIO_JSON = "data/portfolio.json";
 const SETTINGS_FILE = path.join(DATA_DIR, "site-settings.json");
 
 function getPortfolioRowCount(): number {
@@ -87,16 +91,23 @@ function migrateStore(store: PortfolioStore): PortfolioStore {
   let changed = false;
 
   store.design = store.design.map((p) => {
-    const staticMatch = STATIC_DESIGNS.find((d) => d.image === p.media_url);
+    let mediaUrl = p.media_url;
+    if (mediaUrl === "/designs/CONSTITUTIONDAY.jpg") {
+      mediaUrl = "/designs/ConstitutionDay.jpg";
+      changed = true;
+    }
+
+    const staticMatch = STATIC_DESIGNS.find((d) => d.image === mediaUrl);
     const title = p.title || staticMatch?.title || "";
 
     // Keep admin-set format; only infer for legacy rows missing metadata.
     const aspectRatio: "square" | "portrait" =
       p.metadata?.aspectRatio ||
-      (PORTRAIT_DESIGN_IMAGES.has(p.media_url) ? "portrait" : "square");
+      (PORTRAIT_DESIGN_IMAGES.has(mediaUrl) ? "portrait" : "square");
     const nextMeta = { ...p.metadata, aspectRatio };
 
     if (
+      mediaUrl !== p.media_url ||
       p.metadata?.aspectRatio !== aspectRatio ||
       !p.title ||
       (title && p.title !== title)
@@ -104,6 +115,7 @@ function migrateStore(store: PortfolioStore): PortfolioStore {
       changed = true;
       return {
         ...p,
+        media_url: mediaUrl,
         title: title || p.title,
         metadata: nextMeta,
         published: p.published ?? true,
@@ -157,13 +169,20 @@ function migrateStore(store: PortfolioStore): PortfolioStore {
 
 async function ensureStore(): Promise<PortfolioStore> {
   try {
-    const raw = await fs.readFile(DATA_FILE, "utf8");
-    const parsed = JSON.parse(raw) as PortfolioStore;
+    const parsed =
+      (await readJsonFile<PortfolioStore>(PORTFOLIO_JSON)) ??
+      (JSON.parse(await fs.readFile(DATA_FILE, "utf8")) as PortfolioStore);
     const migrated = migrateStore(parsed);
     const before = JSON.stringify(parsed);
     const after = JSON.stringify(migrated);
     if (before !== after) {
       await writeStore(migrated);
+    } else if (isBlobStorageEnabled()) {
+      try {
+        await head(PORTFOLIO_JSON);
+      } catch {
+        await writeJsonFile(PORTFOLIO_JSON, migrated);
+      }
     }
     return migrated;
   } catch {
@@ -186,16 +205,14 @@ async function ensureStore(): Promise<PortfolioStore> {
       })),
       client: [],
     };
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(DATA_FILE, JSON.stringify(store, null, 2), "utf8");
+    await writeJsonFile(PORTFOLIO_JSON, store);
     return store;
   }
 }
 
 async function writeStore(store: PortfolioStore) {
   if (isNextBuildPhase()) return;
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(DATA_FILE, JSON.stringify(store, null, 2), "utf8");
+  await writeJsonFile(PORTFOLIO_JSON, store);
 }
 
 export async function getLocalProjects(type: ProjectType): Promise<Project[]> {
@@ -308,16 +325,27 @@ export async function deleteLocalProject(id: string): Promise<boolean> {
 }
 
 export async function reorderLocalProjects(
-  items: { id: string; sort_order: number }[]
+  items: { id: string; sort_order: number; metadata?: Project["metadata"] }[]
 ): Promise<void> {
   const store = await ensureStore();
-  const orderMap = new Map(items.map((i) => [i.id, i.sort_order]));
+  const itemMap = new Map(items.map((i) => [i.id, i]));
 
   for (const type of ["design", "video", "client"] as ProjectType[]) {
-    store[type] = store[type].map((p) =>
-      orderMap.has(p.id) ? { ...p, sort_order: orderMap.get(p.id)! } : p
-    );
-    store[type].sort((a, b) => a.sort_order - b.sort_order);
+    let touched = false;
+    store[type] = store[type].map((p) => {
+      const item = itemMap.get(p.id);
+      if (!item) return p;
+      touched = true;
+      return {
+        ...p,
+        sort_order: item.sort_order,
+        metadata: item.metadata ? { ...p.metadata, ...item.metadata } : p.metadata,
+        updated_at: new Date().toISOString(),
+      };
+    });
+    if (touched) {
+      store[type].sort((a, b) => a.sort_order - b.sort_order);
+    }
   }
 
   await writeStore(store);

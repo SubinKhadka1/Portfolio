@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
-import { savePublicMedia, validateMediaFile } from "@/lib/public-media";
+import { validateMediaFile } from "@/lib/public-media";
+import { saveMediaFile } from "@/lib/save-media";
+import { revalidateLiveSite } from "@/lib/revalidate-site";
 import { tryCreateClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { ProjectType } from "@/lib/types/database";
+import { isBlobStorageEnabled } from "@/lib/storage-mode";
 
 const BUCKET = "portfolio-media";
 
@@ -42,14 +45,16 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isSupabaseConfigured()) {
-      const { url, filename } = await savePublicMedia(type, file);
-      return NextResponse.json({ url, filename, storage: "local" });
+      const { url, filename } = await saveMediaFile(type, file);
+      revalidateLiveSite();
+      return NextResponse.json({ url, filename, storage: isBlobStorageEnabled() ? "blob" : "local" });
     }
 
     const supabase = await tryCreateClient();
     if (!supabase) {
-      const { url, filename } = await savePublicMedia(type, file);
-      return NextResponse.json({ url, filename, storage: "local" });
+      const { url, filename } = await saveMediaFile(type, file);
+      revalidateLiveSite();
+      return NextResponse.json({ url, filename, storage: isBlobStorageEnabled() ? "blob" : "local" });
     }
 
     const ext = file.name.split(".").pop()?.toLowerCase() || "bin";
@@ -67,6 +72,7 @@ export async function POST(request: NextRequest) {
 
     const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
 
+    revalidateLiveSite();
     return NextResponse.json({
       url: urlData.publicUrl,
       path: storagePath,

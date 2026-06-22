@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -18,16 +18,11 @@ import {
   groupProjectsByMarqueeRow,
   marqueeSortOrder,
 } from "@/lib/marquee";
+import { buildReorderItems } from "@/lib/reorder-payload";
+import { parseResponseJson } from "@/lib/parse-response";
 import type { Project } from "@/lib/types/database";
 
 const rowDirections = ["Scrolls left", "Scrolls right", "Scrolls left"] as const;
-
-function rowSortPayload(rowProjects: Project[], row: number) {
-  return rowProjects.map((p, index) => ({
-    id: p.id,
-    sort_order: marqueeSortOrder(row, index),
-  }));
-}
 
 function addClientHref(row: number) {
   return `/admin/projects/new?type=client&row=${row}`;
@@ -175,19 +170,32 @@ export default function ClientRowManager({
   const [projects, setProjects] = useState(initial);
   const [drag, setDrag] = useState<{ row: number; index: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setProjects(initial);
+  }, [initial]);
 
   const rowGroups = useMemo(
     () => groupProjectsByMarqueeRow(projects, rowCount),
     [projects, rowCount]
   );
 
-  async function persistRowOrder(row: number, rowProjects: Project[]) {
-    await fetch("/api/projects/reorder", {
+  async function persistReorder(items: ReturnType<typeof buildReorderItems>) {
+    const res = await fetch("/api/projects/reorder", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: rowSortPayload(rowProjects, row) }),
+      body: JSON.stringify({ items }),
     });
+    const data = await parseResponseJson<{ error?: string }>(res);
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to save client order");
+    }
     router.refresh();
+  }
+
+  async function persistRowOrder(row: number, rowProjects: Project[]) {
+    await persistReorder(buildReorderItems(rowProjects, row));
   }
 
   async function updateProject(
@@ -240,6 +248,7 @@ export default function ClientRowManager({
     }
 
     setBusy(true);
+    setError("");
     try {
       const sourceRow = drag.row;
       const sourceProjects = [...rowGroups[sourceRow]];
@@ -264,21 +273,14 @@ export default function ClientRowManager({
         const normalizedTarget = normalizeRowProjects(targetProjects, targetRowNum);
         applyRowState([...normalizedSource, ...normalizedTarget]);
 
-        await updateProject(updatedMoved.id, {
-          metadata: { ...updatedMoved.metadata, marqueeRow: targetRowNum as 1 | 2 | 3 },
-        });
-        await fetch("/api/projects/reorder", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items: [
-              ...rowSortPayload(normalizedSource, sourceRow + 1),
-              ...rowSortPayload(normalizedTarget, targetRowNum),
-            ],
-          }),
-        });
+        await persistReorder([
+          ...buildReorderItems(normalizedSource, sourceRow + 1),
+          ...buildReorderItems(normalizedTarget, targetRowNum),
+        ]);
       }
-      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save");
+      setProjects(initial);
     } finally {
       setBusy(false);
       setDrag(null);
@@ -291,6 +293,7 @@ export default function ClientRowManager({
     if (currentRow === targetRow) return;
 
     setBusy(true);
+    setError("");
     try {
       const sourceIndex = currentRow - 1;
       const targetIndex = targetRow - 1;
@@ -301,20 +304,13 @@ export default function ClientRowManager({
       const normalizedTarget = normalizeRowProjects(targetProjects, targetRow);
       applyRowState([...normalizedSource, ...normalizedTarget]);
 
-      await updateProject(project.id, {
-        metadata: { ...project.metadata, marqueeRow: targetRow as 1 | 2 | 3 },
-      });
-      await fetch("/api/projects/reorder", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: [
-            ...rowSortPayload(normalizedSource, currentRow),
-            ...rowSortPayload(normalizedTarget, targetRow),
-          ],
-        }),
-      });
-      router.refresh();
+      await persistReorder([
+        ...buildReorderItems(normalizedSource, currentRow),
+        ...buildReorderItems(normalizedTarget, targetRow),
+      ]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save");
+      setProjects(initial);
     } finally {
       setBusy(false);
     }
@@ -322,6 +318,11 @@ export default function ClientRowManager({
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      {error && (
+        <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+          {error}
+        </p>
+      )}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl px-3 sm:px-4 py-3 text-xs sm:text-sm text-zinc-400 leading-relaxed">
         Client logos are organized into{" "}
         <strong className="text-zinc-200">

@@ -15,5 +15,6 @@ export const config = {
     "/api/stats",
     "/api/seed",
     "/api/categories",
+    "/api/admin/:path*",
   ],
 };

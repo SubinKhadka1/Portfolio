@@ -8,6 +8,7 @@ import {
 import { tryCreateClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { ProjectInput } from "@/lib/types/database";
+import { revalidateLiveSite } from "@/lib/revalidate-site";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -50,6 +51,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   if (!isSupabaseConfigured()) {
     const project = await updateLocalProject(id, body);
     if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    revalidateLiveSite();
     return NextResponse.json(project);
   }
 
@@ -57,6 +59,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   if (!supabase) {
     const project = await updateLocalProject(id, body);
     if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    revalidateLiveSite();
     return NextResponse.json(project);
   }
 
@@ -79,6 +82,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  revalidateLiveSite();
   return NextResponse.json(data);
 }
 
@@ -94,6 +98,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
   if (!isSupabaseConfigured()) {
     const deleted = await deleteLocalProject(id);
     if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    revalidateLiveSite();
     return NextResponse.json({ success: true });
   }
 
@@ -101,11 +106,13 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
   if (!supabase) {
     const deleted = await deleteLocalProject(id);
     if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    revalidateLiveSite();
     return NextResponse.json({ success: true });
   }
 
   const { error } = await supabase.from("projects").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  revalidateLiveSite();
   return NextResponse.json({ success: true });
 }

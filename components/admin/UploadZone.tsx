@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Upload, X, Loader2, Image as ImageIcon, Film } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Upload, X, Loader2, Image as ImageIcon, Film, RefreshCw } from "lucide-react";
 import type { ProjectType } from "@/lib/types/database";
 import { parseResponseJson } from "@/lib/parse-response";
 import { formatBytes, prepareDesignUpload } from "@/lib/compress-design-image";
@@ -59,6 +59,7 @@ export default function UploadZone({
   currentUrls = [],
   accept,
 }: UploadZoneProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
@@ -66,6 +67,7 @@ export default function UploadZone({
   const [preview, setPreview] = useState(currentUrl || "");
   const [previews, setPreviews] = useState<string[]>(currentUrls);
   const [existingFiles, setExistingFiles] = useState<string[]>([]);
+  const [loadingLibrary, setLoadingLibrary] = useState(true);
   const [detectedFormat, setDetectedFormat] = useState("");
   const [optimizeNote, setOptimizeNote] = useState("");
 
@@ -78,10 +80,23 @@ export default function UploadZone({
   }, [currentUrls, multiple]);
 
   useEffect(() => {
+    setLoadingLibrary(true);
     fetch(`/api/media?type=${type}`)
-      .then((r) => r.json())
-      .then((files) => Array.isArray(files) && setExistingFiles(files))
-      .catch(() => {});
+      .then(async (r) => {
+        const data = await parseResponseJson<string[] | { error?: string }>(r);
+        if (!r.ok) {
+          throw new Error(
+            typeof data === "object" && data && "error" in data
+              ? String(data.error)
+              : "Could not load image library"
+          );
+        }
+        if (Array.isArray(data)) setExistingFiles(data);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Could not load image library");
+      })
+      .finally(() => setLoadingLibrary(false));
   }, [type]);
 
   const detectFormat = useCallback(
@@ -93,6 +108,12 @@ export default function UploadZone({
     },
     [type, onDesignFormatDetected]
   );
+
+  useEffect(() => {
+    if (!multiple && currentUrl && type === "design") {
+      detectFormat(currentUrl);
+    }
+  }, [currentUrl, multiple, type, detectFormat]);
 
   const uploadOne = useCallback(
     async (file: File) => {
@@ -222,11 +243,25 @@ export default function UploadZone({
     }
   }
 
+  function openFilePicker() {
+    fileInputRef.current?.click();
+  }
+
   const isVideo = type === "video";
   const fileLabel = type === "video" ? "videos" : type === "design" ? "designs" : "files";
+  const selectedUrl = multiple ? "" : preview;
 
   return (
     <div className="space-y-3">
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept={accept || acceptMap[type]}
+        multiple={multiple}
+        onChange={handleFileInput}
+      />
+
       {multiple && previews.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {previews.map((url) => (
@@ -271,23 +306,39 @@ export default function UploadZone({
             <p className="text-sm">{uploadProgress || "Uploading..."}</p>
           </div>
         ) : !multiple && preview ? (
-          <div className="relative inline-block">
-            {isVideo ? (
-              <video src={preview} className="max-h-48 rounded-lg mx-auto" controls playsInline />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview} alt="Preview" className="max-h-40 rounded-lg mx-auto object-contain" />
-            )}
-            <button
-              type="button"
-              onClick={() => removeUrl(preview)}
-              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white"
-            >
-              <X size={12} />
-            </button>
+          <div className="space-y-4">
+            <div className="relative inline-block mx-auto">
+              {isVideo ? (
+                <video src={preview} className="max-h-48 rounded-lg mx-auto" controls playsInline />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={preview} alt="Preview" className="max-h-40 rounded-lg mx-auto object-contain" />
+              )}
+            </div>
             {type === "design" && detectedFormat && (
-              <p className="text-xs text-purple-300 mt-2">Detected format: {detectedFormat}</p>
+              <p className="text-xs text-purple-300">Detected format: {detectedFormat}</p>
             )}
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={openFilePicker}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors"
+              >
+                <RefreshCw size={16} />
+                Replace {isVideo ? "video" : "image"}
+              </button>
+              <button
+                type="button"
+                onClick={() => removeUrl(preview)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm rounded-lg transition-colors"
+              >
+                <X size={16} />
+                Remove
+              </button>
+            </div>
+            <p className="text-zinc-500 text-xs text-center">
+              Or pick a different file from your library below
+            </p>
           </div>
         ) : (
           <label className="cursor-pointer flex flex-col items-center gap-3">
@@ -306,17 +357,24 @@ export default function UploadZone({
                 {type === "client" && "Logo PNG, SVG, WebP up to 30MB"}
               </p>
             </div>
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors">
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.preventDefault();
+                openFilePicker();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openFilePicker();
+                }
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors"
+            >
               <Upload size={16} />
               {multiple ? "Choose Files" : "Choose File"}
             </span>
-            <input
-              type="file"
-              className="hidden"
-              accept={accept || acceptMap[type]}
-              multiple={multiple}
-              onChange={handleFileInput}
-            />
           </label>
         )}
       </div>
@@ -327,36 +385,52 @@ export default function UploadZone({
         </p>
       )}
 
-      {existingFiles.length > 0 && (
+      {(loadingLibrary || existingFiles.length > 0) && (
         <div>
           <p className="text-zinc-400 text-xs font-medium mb-2">
             {multiple
               ? `Or add from existing ${fileLabel}`
               : isVideo
                 ? "Or pick an existing video"
-                : "Or pick an existing file"}
+                : "Or pick from your image library"}
           </p>
-          <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-            {existingFiles.map((url) => {
-              const name = decodeURIComponent(url.split("/").pop() || url);
-              const selected = multiple ? previews.includes(url) : preview === url;
-              return (
-                <button
-                  key={url}
-                  type="button"
-                  onClick={() => selectExisting(url)}
-                  disabled={multiple && selected}
-                  className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                    selected
-                      ? "bg-purple-600 text-white"
-                      : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white disabled:opacity-40"
-                  }`}
-                >
-                  {name}
-                </button>
-              );
-            })}
-          </div>
+          {loadingLibrary ? (
+            <div className="flex items-center gap-2 text-zinc-500 text-xs py-2">
+              <Loader2 size={14} className="animate-spin" />
+              Loading library...
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-52 overflow-y-auto pr-1">
+              {existingFiles.map((url) => {
+                const name = decodeURIComponent(url.split("/").pop() || url);
+                const selected = multiple ? previews.includes(url) : selectedUrl === url;
+                return (
+                  <button
+                    key={url}
+                    type="button"
+                    onClick={() => selectExisting(url)}
+                    disabled={multiple && selected}
+                    title={name}
+                    className={`relative rounded-lg border overflow-hidden text-left transition-all ${
+                      selected
+                        ? "border-purple-500 ring-2 ring-purple-500/40"
+                        : "border-zinc-700 hover:border-zinc-500"
+                    } disabled:opacity-50`}
+                  >
+                    {isVideo ? (
+                      <video src={url} className="w-full h-16 object-cover bg-black" muted playsInline />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={url} alt={name} className="w-full h-16 object-contain bg-zinc-950 p-0.5" />
+                    )}
+                    <p className="text-[9px] text-zinc-500 truncate px-1 py-1 border-t border-zinc-800 bg-zinc-900">
+                      {name}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

@@ -17,7 +17,7 @@
         "marqueeRow": 1
       },
       "created_at": "2026-06-20T05:46:52.549Z",
-      "updated_at": "2026-06-20T06:23:40.032Z",
+      "updated_at": "2026-06-22T09:11:30.813Z",
       "categories": null
     },
     {
@@ -37,7 +37,7 @@
         "marqueeRow": 1
       },
       "created_at": "2026-06-20T05:46:52.549Z",
-      "updated_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z",
       "categories": null
     },
     {
@@ -57,7 +57,7 @@
         "marqueeRow": 1
       },
       "created_at": "2026-06-20T05:46:52.549Z",
-      "updated_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z",
       "categories": null
     },
     {
@@ -77,7 +77,7 @@
         "marqueeRow": 1
       },
       "created_at": "2026-06-20T05:46:52.549Z",
-      "updated_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z",
       "categories": null
     },
     {
@@ -85,7 +85,7 @@
       "type": "design",
       "title": "Constitution Day",
       "description": "",
-      "media_url": "/designs/CONSTITUTIONDAY.jpg",
+      "media_url": "/designs/ConstitutionDay.jpg",
       "thumbnail_url": null,
       "category_id": null,
       "featured": false,
@@ -97,7 +97,27 @@
         "marqueeRow": 1
       },
       "created_at": "2026-06-20T05:46:52.549Z",
-      "updated_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z",
+      "categories": null
+    },
+    {
+      "id": "43978e04-b11b-445d-ab15-e27e8b254070",
+      "type": "design",
+      "title": "TIRA MISS YOU",
+      "description": "",
+      "media_url": "/designs/1781941235880-TIRA---MISS---YOU.jpg",
+      "thumbnail_url": null,
+      "category_id": null,
+      "featured": false,
+      "published": true,
+      "sort_order": 1005,
+      "metadata": {
+        "color": "from-violet-700 to-indigo-900",
+        "aspectRatio": "square",
+        "marqueeRow": 1
+      },
+      "created_at": "2026-06-20T07:40:41.769Z",
+      "updated_at": "2026-06-22T09:11:30.813Z",
       "categories": null
     },
     {
@@ -217,7 +237,7 @@
         "marqueeRow": 3
       },
       "created_at": "2026-06-20T05:46:52.549Z",
-      "updated_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z",
       "categories": null
     },
     {
@@ -237,7 +257,7 @@
         "marqueeRow": 3
       },
       "created_at": "2026-06-20T05:46:52.549Z",
-      "updated_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z",
       "categories": null
     },
     {
@@ -257,7 +277,7 @@
         "marqueeRow": 3
       },
       "created_at": "2026-06-20T05:46:52.549Z",
-      "updated_at": "2026-06-20T06:17:47.885Z",
+      "updated_at": "2026-06-22T09:11:30.813Z",
       "categories": null
     },
     {
@@ -277,7 +297,7 @@
         "marqueeRow": 3
       },
       "created_at": "2026-06-20T07:12:51.649Z",
-      "updated_at": "2026-06-20T07:12:51.649Z",
+      "updated_at": "2026-06-22T09:11:30.813Z",
       "categories": null
     },
     {
@@ -290,34 +310,14 @@
       "category_id": null,
       "featured": false,
       "published": true,
-      "sort_order": 3005,
+      "sort_order": 3004,
       "metadata": {
         "color": "from-violet-700 to-indigo-900",
         "aspectRatio": "portrait",
         "marqueeRow": 3
       },
       "created_at": "2026-06-20T07:36:53.665Z",
-      "updated_at": "2026-06-20T07:36:53.665Z",
-      "categories": null
-    },
-    {
-      "id": "43978e04-b11b-445d-ab15-e27e8b254070",
-      "type": "design",
-      "title": "TIRA MISS YOU",
-      "description": "",
-      "media_url": "/designs/1781941235880-TIRA---MISS---YOU.jpg",
-      "thumbnail_url": null,
-      "category_id": null,
-      "featured": false,
-      "published": true,
-      "sort_order": 3006,
-      "metadata": {
-        "color": "from-violet-700 to-indigo-900",
-        "aspectRatio": "square",
-        "marqueeRow": 3
-      },
-      "created_at": "2026-06-20T07:40:41.769Z",
-      "updated_at": "2026-06-20T07:40:41.769Z",
+      "updated_at": "2026-06-22T09:11:30.813Z",
       "categories": null
     }
   ],

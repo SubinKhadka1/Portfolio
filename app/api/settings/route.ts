@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
 import { getSiteSettings, saveHeroImage, updateSiteSettings } from "@/lib/site-settings";
+import { revalidateLiveSite } from "@/lib/revalidate-site";
 
 export async function GET() {
   const settings = await getSiteSettings();
@@ -17,6 +18,7 @@ export async function PUT(request: NextRequest) {
   const body = await request.json();
   const settings = await updateSiteSettings(body);
 
+  revalidateLiveSite();
   return NextResponse.json(settings);
 }
 
@@ -41,5 +43,6 @@ export async function POST(request: NextRequest) {
     ...(heroAlt ? { heroAlt } : {}),
   });
 
+  revalidateLiveSite();
   return NextResponse.json(settings);
 }

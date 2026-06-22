@@ -387,7 +387,7 @@ export default function ProjectForm({
 
       {type === "video" && (
         <>
-      {type === "video" && !allowMultiple && mediaUrl && (
+          {!allowMultiple && mediaUrl && (
             <div className="rounded-xl overflow-hidden border border-zinc-800 bg-black">
               <video src={mediaUrl} className="w-full max-h-64" controls playsInline />
             </div>

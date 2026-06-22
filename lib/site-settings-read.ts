@@ -1,5 +1,4 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { readJsonFile, writeJsonFile } from "@/lib/json-store";
 import { clampMarqueeRepeat, clampMarqueeRows, clampScrollDuration } from "@/lib/marquee";
 
 export type SiteSettings = {
@@ -15,8 +14,7 @@ export type SiteSettings = {
   videoScrollDuration: number;
 };
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const SETTINGS_FILE = path.join(DATA_DIR, "site-settings.json");
+const SETTINGS_JSON = "data/site-settings.json";
 
 const DEFAULT_SETTINGS: SiteSettings = {
   heroImage: "/Profile.png",
@@ -53,10 +51,11 @@ export function normalizeSiteSettings(raw: Partial<SiteSettings>): SiteSettings 
 }
 
 export async function getSiteSettings(): Promise<SiteSettings> {
-  try {
-    const raw = await fs.readFile(SETTINGS_FILE, "utf8");
-    return normalizeSiteSettings(JSON.parse(raw));
-  } catch {
-    return DEFAULT_SETTINGS;
-  }
+  const raw = await readJsonFile<Partial<SiteSettings>>(SETTINGS_JSON);
+  if (!raw) return DEFAULT_SETTINGS;
+  return normalizeSiteSettings(raw);
+}
+
+export async function writeSiteSettings(settings: SiteSettings): Promise<void> {
+  await writeJsonFile(SETTINGS_JSON, settings);
 }

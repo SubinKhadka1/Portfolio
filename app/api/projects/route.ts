@@ -8,6 +8,7 @@ import { tryCreateClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { ProjectInput, ProjectType } from "@/lib/types/database";
 import { parseRequestJson } from "@/lib/parse-response";
+import { revalidateLiveSite } from "@/lib/revalidate-site";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -79,12 +80,14 @@ export async function POST(request: NextRequest) {
   try {
     if (!isSupabaseConfigured()) {
       const project = await createLocalProject(body);
+      revalidateLiveSite();
       return NextResponse.json(project, { status: 201 });
     }
 
     const supabase = await tryCreateClient();
     if (!supabase) {
       const project = await createLocalProject(body);
+      revalidateLiveSite();
       return NextResponse.json(project, { status: 201 });
     }
 
@@ -114,6 +117,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    revalidateLiveSite();
     return NextResponse.json(data, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create project";

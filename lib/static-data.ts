@@ -5,7 +5,7 @@ export const STATIC_DESIGNS: DesignItem[] = [
   { id: "2", title: "Opportunity", image: "/designs/Opportunity.jpg", color: "from-yellow-700 to-orange-900", aspectRatio: "portrait" },
   { id: "3", title: "Live Study", image: "/designs/LIVE STUDY.jpg", color: "from-green-700 to-emerald-900", aspectRatio: "square" },
   { id: "16", title: "PTE Score", image: "/designs/PTE SCORE.jpg", color: "from-purple-700 to-fuchsia-900", aspectRatio: "square" },
-  { id: "15", title: "Constitution Day", image: "/designs/CONSTITUTIONDAY.jpg", color: "from-blue-700 to-indigo-900", aspectRatio: "square" },
+  { id: "15", title: "Constitution Day", image: "/designs/ConstitutionDay.jpg", color: "from-blue-700 to-indigo-900", aspectRatio: "square" },
   { id: "17", title: "New Year 2083", image: "/designs/NEW YEAR - 2083.jpg", color: "from-yellow-700 to-orange-900", aspectRatio: "portrait" },
   { id: "4", title: "Children's Day", image: "/designs/Children's Day.jpg", color: "from-pink-700 to-rose-900", aspectRatio: "square" },
   { id: "22", title: "Republic Day", image: "/designs/REPUBLIC-DAY.jpg", color: "from-red-700 to-yellow-900", aspectRatio: "square" },

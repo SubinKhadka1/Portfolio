@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
-import { listPublicMedia } from "@/lib/public-media";
+import { listMediaCatalog } from "@/lib/media-catalog";
 import type { ProjectType } from "@/lib/types/database";
 
 export async function GET(request: NextRequest) {
@@ -15,6 +15,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Valid type required" }, { status: 400 });
   }
 
-  const files = await listPublicMedia(type);
+  const files = await listMediaCatalog(type);
   return NextResponse.json(files);
 }
