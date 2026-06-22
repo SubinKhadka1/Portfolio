@@ -1,5 +1,17 @@
+function hasEnv(name: string) {
+  const value = process.env[name];
+  return typeof value === "string" && value.trim() !== "";
+}
+
+export function getBlobAuthMode(): "token" | "oidc" | "none" {
+  if (hasEnv("BLOB_READ_WRITE_TOKEN")) return "token";
+  // Vercel links Blob stores via OIDC and injects BLOB_STORE_ID (not always a read-write token).
+  if (isVercelProduction() && hasEnv("BLOB_STORE_ID")) return "oidc";
+  return "none";
+}
+
 export function isBlobStorageEnabled() {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  return getBlobAuthMode() !== "none";
 }
 
 export function isVercelProduction() {
