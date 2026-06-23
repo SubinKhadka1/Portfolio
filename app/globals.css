@@ -451,10 +451,18 @@ body {
   }
 }
 
-.reel-slide video {
+.reel-slide video,
+.reel-slide__video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+}
+
+.reel-slide--clean {
+  background: #000;
 }
 
 /* ── Form inputs ── */

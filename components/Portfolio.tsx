@@ -56,7 +56,7 @@ export default function Portfolio({
   designs = [],
   rows = 3,
   repeat = 2,
-  scrollDuration = 42,
+  scrollDuration = 35,
 }: PortfolioProps) {
   const rowData = groupDesignsByMarqueeRow(designs, rows);
   const directions: Array<"left" | "right"> = ["left", "right", "left"];
