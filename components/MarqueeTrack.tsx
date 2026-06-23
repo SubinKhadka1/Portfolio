@@ -108,11 +108,15 @@ export default function MarqueeTrack({
     if (!el || !scrollEnabled) return;
 
     const onWheel = (e: WheelEvent) => {
-      const delta =
-        Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      if (delta === 0) return;
+      const absX = Math.abs(e.deltaX);
+      const absY = Math.abs(e.deltaY);
+
+      // Only control the row on horizontal scroll (trackpad sideways, shift+wheel).
+      // Vertical mouse-wheel scrolling should move the page, not the showcase.
+      if (absX <= absY || absX < 4) return;
+
       e.preventDefault();
-      x.set(wrapMarqueeX(x.get() - delta * 0.9, loopWidth));
+      x.set(wrapMarqueeX(x.get() - e.deltaX * 0.9, loopWidth));
       setUserPaused(true);
       if (wheelTimeoutRef.current) clearTimeout(wheelTimeoutRef.current);
       wheelTimeoutRef.current = setTimeout(() => setUserPaused(false), 1400);
