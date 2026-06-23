@@ -4,7 +4,6 @@ import {
   useRef,
   useEffect,
   useState,
-  useCallback,
   useMemo,
   type ReactNode,
 } from "react";
@@ -56,11 +55,12 @@ export default function MarqueeTrack({
   const pauseContext = useMemo(
     () => ({
       setPaused: (paused: boolean) => setHoldPaused(paused),
+      rowDragging: isDragging,
     }),
-    []
+    [isDragging]
   );
 
-  const measureLoop = useCallback(() => {
+  const measureLoop = () => {
     const row = rowRef.current;
     if (!row) return;
     const total = row.scrollWidth;
@@ -72,9 +72,11 @@ export default function MarqueeTrack({
       if (!initializedRef.current) {
         x.set(direction === "right" ? -loop : 0);
         initializedRef.current = true;
+      } else {
+        x.set(wrapMarqueeX(x.get(), loop));
       }
     }
-  }, [direction, duration, repeatCount, x]);
+  };
 
   useEffect(() => {
     measureLoop();
@@ -88,12 +90,16 @@ export default function MarqueeTrack({
       observer.disconnect();
       window.removeEventListener("resize", measureLoop);
     };
-  }, [children, measureLoop]);
+  }, [children, direction, duration, repeatCount, x]);
 
   useAnimationFrame((_, delta) => {
-    if (!scrollEnabled || userPaused || holdPaused || isDragging || loopWidth <= 0) {
-      return;
-    }
+    if (loopWidth <= 0) return;
+
+    const current = x.get();
+    const wrapped = wrapMarqueeX(current, loopWidth);
+    if (wrapped !== current) x.set(wrapped);
+
+    if (!scrollEnabled || userPaused || holdPaused || isDragging) return;
 
     const step = speedRef.current * (delta / 1000);
     const next =
@@ -110,9 +116,6 @@ export default function MarqueeTrack({
     const onWheel = (e: WheelEvent) => {
       const absX = Math.abs(e.deltaX);
       const absY = Math.abs(e.deltaY);
-
-      // Only control the row on horizontal scroll (trackpad sideways, shift+wheel).
-      // Vertical mouse-wheel scrolling should move the page, not the showcase.
       if (absX <= absY || absX < 4) return;
 
       e.preventDefault();
@@ -138,15 +141,17 @@ export default function MarqueeTrack({
             userPaused || holdPaused || isDragging ? "marquee-paused" : ""
           }`}
           drag={scrollEnabled && !holdPaused ? "x" : false}
-          dragElastic={0.04}
-          dragMomentum
-          dragTransition={{ power: 0.2, timeConstant: 260 }}
+          dragElastic={0}
+          dragMomentum={false}
+          onDrag={() => {
+            if (loopWidth > 0) x.set(wrapMarqueeX(x.get(), loopWidth));
+          }}
           onDragStart={() => {
             setIsDragging(true);
             setUserPaused(true);
           }}
           onDragEnd={() => {
-            x.set(wrapMarqueeX(x.get(), loopWidth));
+            if (loopWidth > 0) x.set(wrapMarqueeX(x.get(), loopWidth));
             setIsDragging(false);
             if (wheelTimeoutRef.current) clearTimeout(wheelTimeoutRef.current);
             wheelTimeoutRef.current = setTimeout(() => setUserPaused(false), 900);
@@ -154,6 +159,7 @@ export default function MarqueeTrack({
           style={{
             x,
             cursor: scrollEnabled ? "grab" : "default",
+            touchAction: "pan-y",
           }}
           whileDrag={{ cursor: "grabbing" }}
         >

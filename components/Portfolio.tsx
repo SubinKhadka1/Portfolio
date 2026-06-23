@@ -4,32 +4,44 @@ import type { DesignItem } from "@/lib/types/database";
 import { loopForMarquee, groupDesignsByMarqueeRow } from "@/lib/marquee";
 import { PORTRAIT_DESIGN_IMAGES } from "@/lib/static-data";
 import MarqueeTrack from "@/components/MarqueeTrack";
+import HoldDesignPreview from "@/components/HoldDesignPreview";
 import { useHoldZoom } from "@/lib/hold-zoom";
 
 function DesignCard({ design }: { design: DesignItem }) {
   const isPortrait =
     design.aspectRatio === "portrait" || PORTRAIT_DESIGN_IMAGES.has(design.image);
-  const { zoomed, holdProps, motionProps } = useHoldZoom();
+  const { zoomed, useOverlay, holdProps, motionProps } = useHoldZoom();
 
   return (
-    <motion.article
-      {...holdProps}
-      {...motionProps}
-      className={`design-slide group relative ${
-        isPortrait ? "design-slide--portrait" : "design-slide--square"
-      } ${zoomed ? "design-slide--zoomed" : ""}`}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={design.image}
-        alt={design.title}
-        className={`design-slide-img ${
-          isPortrait ? "design-slide-img--portrait" : "design-slide-img--square"
-        }`}
-        draggable={false}
-      />
-      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-    </motion.article>
+    <>
+      <motion.article
+        {...holdProps}
+        {...motionProps}
+        className={`design-slide group relative ${
+          isPortrait ? "design-slide--portrait" : "design-slide--square"
+        } ${zoomed && !useOverlay ? "design-slide--zoomed" : ""}`}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={design.image}
+          alt={design.title}
+          className={`design-slide-img ${
+            isPortrait ? "design-slide-img--portrait" : "design-slide-img--square"
+          }`}
+          draggable={false}
+        />
+        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      </motion.article>
+
+      {useOverlay && (
+        <HoldDesignPreview
+          open={zoomed}
+          image={design.image}
+          alt={design.title}
+          isPortrait={isPortrait}
+        />
+      )}
+    </>
   );
 }
 
