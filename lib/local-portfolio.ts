@@ -3,9 +3,8 @@ import { readFileSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { isNextBuildPhase } from "@/lib/is-build-time";
-import { readJsonFile, writeJsonFile } from "@/lib/json-store";
-import { isBlobStorageEnabled } from "@/lib/storage-mode";
-import { head } from "@vercel/blob";
+import { blobJsonExists, readJsonFile, writeJsonFile } from "@/lib/json-store";
+import { isBlobStorageEnabled, isVercelProduction } from "@/lib/storage-mode";
 import { staticProjectsForAdmin } from "@/lib/seed";
 import { marqueeSortOrder, clampMarqueeRow } from "@/lib/marquee";
 import {
@@ -167,33 +166,40 @@ function migrateStore(store: PortfolioStore): PortfolioStore {
   return store;
 }
 
-async function ensureStore(): Promise<PortfolioStore> {
-  try {
-    const parsed =
-      (await readJsonFile<PortfolioStore>(PORTFOLIO_JSON)) ??
-      (JSON.parse(await fs.readFile(DATA_FILE, "utf8")) as PortfolioStore);
-    const migrated = migrateStore(parsed);
-    const before = JSON.stringify(parsed);
-    const after = JSON.stringify(migrated);
-    if (before !== after) {
-      await writeStore(migrated);
-    } else if (isBlobStorageEnabled()) {
-      try {
-        await head(PORTFOLIO_JSON);
-      } catch {
-        await writeJsonFile(PORTFOLIO_JSON, migrated);
-      }
-    }
-    return migrated;
-  } catch {
-    if (isNextBuildPhase()) {
-      return {
-        design: staticProjectsForAdmin("design"),
-        video: staticProjectsForAdmin("video"),
-        client: staticProjectsForAdmin("client"),
-      };
-    }
+function cloneStore(store: PortfolioStore): PortfolioStore {
+  return JSON.parse(JSON.stringify(store)) as PortfolioStore;
+}
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function storeHasId(store: PortfolioStore, id: string) {
+  return (["design", "video", "client"] as ProjectType[]).some((type) =>
+    store[type].some((p) => p.id === id)
+  );
+}
+
+async function loadPortfolioStore(): Promise<PortfolioStore> {
+  const fromBlob = await readJsonFile<PortfolioStore>(PORTFOLIO_JSON);
+  if (fromBlob) return migrateStore(fromBlob);
+
+  if (isBlobStorageEnabled() && (await blobJsonExists(PORTFOLIO_JSON))) {
+    throw new Error("Could not read live portfolio data. Please try again.");
+  }
+
+  if (isNextBuildPhase()) {
+    return {
+      design: staticProjectsForAdmin("design"),
+      video: staticProjectsForAdmin("video"),
+      client: staticProjectsForAdmin("client"),
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(await fs.readFile(DATA_FILE, "utf8")) as PortfolioStore;
+    return migrateStore(parsed);
+  } catch {
     const store: PortfolioStore = {
       design: staticProjectsForAdmin("design").map((p) => ({
         ...p,
@@ -205,14 +211,62 @@ async function ensureStore(): Promise<PortfolioStore> {
       })),
       client: [],
     };
-    await writeJsonFile(PORTFOLIO_JSON, store);
+    if (!isNextBuildPhase()) {
+      await writeJsonFile(PORTFOLIO_JSON, store);
+    }
     return store;
   }
 }
 
-async function writeStore(store: PortfolioStore) {
+async function savePortfolioStore(store: PortfolioStore) {
   if (isNextBuildPhase()) return;
   await writeJsonFile(PORTFOLIO_JSON, store);
+}
+
+async function updatePortfolioStore(
+  mutate: (store: PortfolioStore) => void | Promise<void>,
+  options?: { verifyId?: string }
+): Promise<PortfolioStore> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const store = cloneStore(await loadPortfolioStore());
+    await mutate(store);
+    await savePortfolioStore(store);
+
+    if (!options?.verifyId) return store;
+
+    await sleep(120 * (attempt + 1));
+    try {
+      const check = await loadPortfolioStore();
+      if (storeHasId(check, options.verifyId)) return store;
+      lastError = new Error("New item did not persist. Retrying save...");
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error("Save verification failed");
+    }
+  }
+
+  throw lastError ?? new Error("Failed to save portfolio after multiple attempts");
+}
+
+async function ensureStore(): Promise<PortfolioStore> {
+  const store = await loadPortfolioStore();
+  const raw = await readJsonFile<PortfolioStore>(PORTFOLIO_JSON);
+
+  if (raw) {
+    const before = JSON.stringify(migrateStore(raw));
+    const after = JSON.stringify(store);
+    if (before !== after) {
+      await savePortfolioStore(store);
+    }
+  } else if (isBlobStorageEnabled() && !isVercelProduction()) {
+    const exists = await blobJsonExists(PORTFOLIO_JSON);
+    if (!exists) {
+      await savePortfolioStore(store);
+    }
+  }
+
+  return store;
 }
 
 export async function getLocalProjects(type: ProjectType): Promise<Project[]> {
@@ -230,46 +284,51 @@ export async function getLocalProject(id: string): Promise<Project | null> {
 }
 
 export async function createLocalProject(input: ProjectInput): Promise<Project> {
-  const store = await ensureStore();
   const now = new Date().toISOString();
   const type = input.type;
-  const maxOrder = store[type].reduce((max, p) => Math.max(max, p.sort_order), -1);
+  const projectId = randomUUID();
 
-  let sortOrder = input.sort_order ?? maxOrder + 1;
-  if (type === "design" || type === "client") {
-    const row = clampMarqueeRow(input.metadata?.marqueeRow ?? 1);
-    const inRow = store[type].filter(
-      (p) => clampMarqueeRow(p.metadata?.marqueeRow ?? 1) === row
-    );
-    const maxInRow = inRow.reduce((max, p) => Math.max(max, p.sort_order), row * 1000 - 1);
-    sortOrder = maxInRow + 1;
-  }
+  let project!: Project;
 
-  const project: Project = {
-    id: randomUUID(),
-    type: input.type,
-    title: input.title || "",
-    description: input.description || "",
-    media_url: input.media_url,
-    thumbnail_url: input.thumbnail_url || null,
-    category_id: input.category_id || null,
-    featured: input.featured ?? false,
-    published: input.published ?? true,
-    sort_order: sortOrder,
-    metadata:
-      type === "design" || type === "client"
-        ? {
-            ...input.metadata,
-            marqueeRow: clampMarqueeRow(input.metadata?.marqueeRow ?? 1),
-          }
-        : input.metadata || {},
-    created_at: now,
-    updated_at: now,
-    categories: null,
-  };
+  await updatePortfolioStore((store) => {
+    const maxOrder = store[type].reduce((max, p) => Math.max(max, p.sort_order), -1);
 
-  store[type].push(project);
-  await writeStore(store);
+    let sortOrder = input.sort_order ?? maxOrder + 1;
+    if (type === "design" || type === "client") {
+      const row = clampMarqueeRow(input.metadata?.marqueeRow ?? 1);
+      const inRow = store[type].filter(
+        (p) => clampMarqueeRow(p.metadata?.marqueeRow ?? 1) === row
+      );
+      const maxInRow = inRow.reduce((max, p) => Math.max(max, p.sort_order), row * 1000 - 1);
+      sortOrder = maxInRow + 1;
+    }
+
+    project = {
+      id: projectId,
+      type: input.type,
+      title: input.title || "",
+      description: input.description || "",
+      media_url: input.media_url,
+      thumbnail_url: input.thumbnail_url || null,
+      category_id: input.category_id || null,
+      featured: input.featured ?? false,
+      published: input.published ?? true,
+      sort_order: sortOrder,
+      metadata:
+        type === "design" || type === "client"
+          ? {
+              ...input.metadata,
+              marqueeRow: clampMarqueeRow(input.metadata?.marqueeRow ?? 1),
+            }
+          : input.metadata || {},
+      created_at: now,
+      updated_at: now,
+      categories: null,
+    };
+
+    store[type].push(project);
+  }, { verifyId: projectId });
+
   return project;
 }
 
@@ -277,78 +336,85 @@ export async function updateLocalProject(
   id: string,
   input: Partial<ProjectInput>
 ): Promise<Project | null> {
-  const store = await ensureStore();
+  const current = await getLocalProject(id);
+  if (!current) return null;
 
-  for (const type of ["design", "video", "client"] as ProjectType[]) {
-    const index = store[type].findIndex((p) => p.id === id);
-    if (index === -1) continue;
+  let updated: Project | null = null;
 
-    const existing = store[type][index];
-    const updated: Project = {
-      ...existing,
-      ...(input.type !== undefined && { type: input.type }),
-      ...(input.title !== undefined && { title: input.title }),
-      ...(input.description !== undefined && { description: input.description }),
-      ...(input.media_url !== undefined && { media_url: input.media_url }),
-      ...(input.thumbnail_url !== undefined && { thumbnail_url: input.thumbnail_url }),
-      ...(input.category_id !== undefined && { category_id: input.category_id }),
-      ...(input.featured !== undefined && { featured: input.featured }),
-      ...(input.published !== undefined && { published: input.published }),
-      ...(input.sort_order !== undefined && { sort_order: input.sort_order }),
-      ...(input.metadata !== undefined && {
-        metadata: { ...existing.metadata, ...input.metadata },
-      }),
-      updated_at: new Date().toISOString(),
-    };
+  await updatePortfolioStore((store) => {
+    for (const type of ["design", "video", "client"] as ProjectType[]) {
+      const index = store[type].findIndex((p) => p.id === id);
+      if (index === -1) continue;
 
-    store[type][index] = updated;
-    await writeStore(store);
-    return updated;
-  }
+      const existing = store[type][index];
+      updated = {
+        ...existing,
+        ...(input.type !== undefined && { type: input.type }),
+        ...(input.title !== undefined && { title: input.title }),
+        ...(input.description !== undefined && { description: input.description }),
+        ...(input.media_url !== undefined && { media_url: input.media_url }),
+        ...(input.thumbnail_url !== undefined && { thumbnail_url: input.thumbnail_url }),
+        ...(input.category_id !== undefined && { category_id: input.category_id }),
+        ...(input.featured !== undefined && { featured: input.featured }),
+        ...(input.published !== undefined && { published: input.published }),
+        ...(input.sort_order !== undefined && { sort_order: input.sort_order }),
+        ...(input.metadata !== undefined && {
+          metadata: { ...existing.metadata, ...input.metadata },
+        }),
+        updated_at: new Date().toISOString(),
+      };
 
-  return null;
+      store[type][index] = updated;
+      return;
+    }
+  });
+
+  return updated;
 }
 
 export async function deleteLocalProject(id: string): Promise<boolean> {
-  const store = await ensureStore();
+  if (!(await getLocalProject(id))) return false;
 
-  for (const type of ["design", "video", "client"] as ProjectType[]) {
-    const before = store[type].length;
-    store[type] = store[type].filter((p) => p.id !== id);
-    if (store[type].length < before) {
-      await writeStore(store);
-      return true;
+  let deleted = false;
+
+  await updatePortfolioStore((store) => {
+    for (const type of ["design", "video", "client"] as ProjectType[]) {
+      const before = store[type].length;
+      store[type] = store[type].filter((p) => p.id !== id);
+      if (store[type].length < before) {
+        deleted = true;
+        return;
+      }
     }
-  }
+  });
 
-  return false;
+  return deleted;
 }
 
 export async function reorderLocalProjects(
   items: { id: string; sort_order: number; metadata?: Project["metadata"] }[]
 ): Promise<void> {
-  const store = await ensureStore();
   const itemMap = new Map(items.map((i) => [i.id, i]));
 
-  for (const type of ["design", "video", "client"] as ProjectType[]) {
-    let touched = false;
-    store[type] = store[type].map((p) => {
-      const item = itemMap.get(p.id);
-      if (!item) return p;
-      touched = true;
-      return {
-        ...p,
-        sort_order: item.sort_order,
-        metadata: item.metadata ? { ...p.metadata, ...item.metadata } : p.metadata,
-        updated_at: new Date().toISOString(),
-      };
-    });
-    if (touched) {
-      store[type].sort((a, b) => a.sort_order - b.sort_order);
+  await updatePortfolioStore((store) => {
+    for (const type of ["design", "video", "client"] as ProjectType[]) {
+      let touched = false;
+      store[type] = store[type].map((p) => {
+        const item = itemMap.get(p.id);
+        if (!item) return p;
+        touched = true;
+        return {
+          ...p,
+          sort_order: item.sort_order,
+          metadata: item.metadata ? { ...p.metadata, ...item.metadata } : p.metadata,
+          updated_at: new Date().toISOString(),
+        };
+      });
+      if (touched) {
+        store[type].sort((a, b) => a.sort_order - b.sort_order);
+      }
     }
-  }
-
-  await writeStore(store);
+  });
 }
 
 export async function getLocalDashboardStats() {

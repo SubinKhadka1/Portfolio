@@ -157,8 +157,11 @@ export default function ProjectForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const data = await parseResponseJson<{ error?: string }>(res);
+    const data = await parseResponseJson<Project & { error?: string }>(res);
     if (!res.ok) throw new Error(data.error || "Failed to save");
+    if (!data.id) {
+      throw new Error("Save did not complete. Please try again — your live data may still be syncing.");
+    }
     return data;
   }
 
