@@ -1,26 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
-import { tryCreateClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import {
+  createCategory,
+  getCategories,
+  reorderCategories,
+} from "@/lib/categories";
+import { revalidateLiveSite } from "@/lib/revalidate-site";
+import type { ProjectType } from "@/lib/types/database";
 
 export async function GET(request: NextRequest) {
-  if (!isSupabaseConfigured()) {
-    return NextResponse.json([]);
-  }
-
   const { searchParams } = new URL(request.url);
-  const projectType = searchParams.get("type");
-
-  const supabase = await tryCreateClient();
-  if (!supabase) return NextResponse.json([]);
-
-  let query = supabase.from("categories").select("*").order("name");
-  if (projectType) query = query.eq("project_type", projectType);
-
-  const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json(data);
+  const projectType = searchParams.get("type") as ProjectType | null;
+  const categories = await getCategories(projectType || undefined);
+  return NextResponse.json(categories);
 }
 
 export async function POST(request: NextRequest) {
@@ -30,26 +22,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!isSupabaseConfigured()) {
-    return NextResponse.json({ error: "Categories require Supabase" }, { status: 503 });
-  }
+  try {
+    const body = await request.json();
 
-  const body = await request.json();
-  const supabase = await tryCreateClient();
-  if (!supabase) {
-    return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
-  }
+    if (Array.isArray(body.ids)) {
+      const categories = await reorderCategories(body.ids);
+      revalidateLiveSite();
+      return NextResponse.json(categories);
+    }
 
-  const { data, error } = await supabase
-    .from("categories")
-    .insert({
+    const category = await createCategory({
       name: body.name,
-      slug: body.slug || body.name.toLowerCase().replace(/\s+/g, "-"),
-      project_type: body.project_type,
-    })
-    .select()
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data, { status: 201 });
+      description: body.description,
+      project_type: body.project_type || "design",
+    });
+    revalidateLiveSite();
+    return NextResponse.json(category, { status: 201 });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to create category" },
+      { status: 400 }
+    );
+  }
 }

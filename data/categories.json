@@ -1,0 +1,65 @@
+[
+  {
+    "id": "cat-flyers",
+    "name": "Flyers & Posters",
+    "slug": "flyers-posters",
+    "description": "Promotional flyers, event posters, and print-ready creatives.",
+    "project_type": "design",
+    "sort_order": 1,
+    "created_at": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "cat-food-menu",
+    "name": "Food Menu",
+    "slug": "food-menu",
+    "description": "Restaurant menus, cafe boards, and food marketing designs.",
+    "project_type": "design",
+    "sort_order": 2,
+    "created_at": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "cat-pullup",
+    "name": "Pull Up Banner",
+    "slug": "pull-up-banner",
+    "description": "Standee and roll-up banners for events and storefronts.",
+    "project_type": "design",
+    "sort_order": 3,
+    "created_at": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "cat-brochure",
+    "name": "Brochure",
+    "slug": "brochure",
+    "description": "Multi-panel brochures and informational print layouts.",
+    "project_type": "design",
+    "sort_order": 4,
+    "created_at": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "cat-cover",
+    "name": "Cover Page",
+    "slug": "cover-page",
+    "description": "Book covers, report covers, and publication front pages.",
+    "project_type": "design",
+    "sort_order": 5,
+    "created_at": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "cat-ticket",
+    "name": "Movie Tickets",
+    "slug": "movie-tickets",
+    "description": "Cinema tickets, event passes, and entry card designs.",
+    "project_type": "design",
+    "sort_order": 6,
+    "created_at": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "cat-social",
+    "name": "Social Media",
+    "slug": "social-media",
+    "description": "Instagram posts, stories, and digital social creatives.",
+    "project_type": "design",
+    "sort_order": 7,
+    "created_at": "2026-01-01T00:00:00.000Z"
+  }
+]

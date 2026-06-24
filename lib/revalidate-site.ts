@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 export function revalidateLiveSite() {
   revalidatePath("/", "layout");
   revalidatePath("/", "page");
+  revalidatePath("/designs", "page");
   revalidatePath("/admin", "layout");
   revalidatePath("/admin/projects", "page");
+  revalidatePath("/admin/categories", "page");
 }

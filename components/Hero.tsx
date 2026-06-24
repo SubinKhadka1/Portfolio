@@ -2,6 +2,7 @@
 
 import { motion, useInView } from "framer-motion";
 import { ArrowUpRight, MessageCircle, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { useRef, useState, useEffect, ReactNode } from "react";
 import Instagram from "@/components/icons/Instagram";
 import { getWhatsAppUrl, SOCIAL_LINKS, WHATSAPP_GREETING } from "@/lib/site";
@@ -159,14 +160,14 @@ export default function Hero({
               transition={{ delay: 0.6, duration: 0.7 }}
               className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 mb-6 justify-center lg:justify-start w-full sm:w-auto"
             >
-              <a
-                href="#portfolio"
+              <Link
+                href="/designs"
                 className="group relative inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-full bg-gradient-to-r from-purple-600 via-violet-600 to-purple-700 text-white font-semibold text-sm sm:text-base shadow-[0_0_30px_rgba(139,92,246,0.35)] hover:shadow-[0_0_50px_rgba(139,92,246,0.5)] hover:scale-[1.03] active:scale-[0.98] transition-all duration-300 overflow-hidden"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                 <span className="relative z-10">See My Designs</span>
                 <ArrowUpRight className="relative z-10 w-5 h-5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" />
-              </a>
+              </Link>
 
               <a
                 href={getWhatsAppUrl(WHATSAPP_GREETING)}

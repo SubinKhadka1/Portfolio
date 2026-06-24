@@ -167,32 +167,41 @@ function ReelSlide({ video, onOpen }: { video: VideoItem; onOpen: () => void }) 
   const previewRef = useRef<HTMLVideoElement>(null);
   const visibleRef = useRef(false);
   const hideBtnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [showOpenBtn, setShowOpenBtn] = useState(false);
+  const btnTouchRef = useRef(false);
   const clipStart = Math.max(0, video.clipStart ?? 0);
   const clipEnd = Math.max(clipStart + 0.5, video.clipEnd ?? 8);
 
-  const revealOpenBtn = useCallback(() => {
+  const setControlsOpen = useCallback((open: boolean) => {
+    slideRef.current?.classList.toggle("is-pressed", open);
+  }, []);
+
+  const cancelHide = useCallback(() => {
     if (hideBtnTimerRef.current) {
       clearTimeout(hideBtnTimerRef.current);
       hideBtnTimerRef.current = null;
     }
-    setShowOpenBtn(true);
   }, []);
 
-  const hideOpenBtn = useCallback((immediate = false) => {
-    if (hideBtnTimerRef.current) clearTimeout(hideBtnTimerRef.current);
-    const delay = immediate ? 0 : 1800;
-    hideBtnTimerRef.current = setTimeout(() => {
-      setShowOpenBtn(false);
-      hideBtnTimerRef.current = null;
-    }, delay);
-  }, []);
+  const revealOpenBtn = useCallback(() => {
+    cancelHide();
+    setControlsOpen(true);
+  }, [cancelHide, setControlsOpen]);
+
+  const scheduleHide = useCallback(
+    (delay: number) => {
+      cancelHide();
+      hideBtnTimerRef.current = setTimeout(() => {
+        if (btnTouchRef.current) return;
+        setControlsOpen(false);
+        hideBtnTimerRef.current = null;
+      }, delay);
+    },
+    [cancelHide, setControlsOpen]
+  );
 
   useEffect(() => {
-    return () => {
-      if (hideBtnTimerRef.current) clearTimeout(hideBtnTimerRef.current);
-    };
-  }, []);
+    return () => cancelHide();
+  }, [cancelHide]);
 
   useEffect(() => {
     const el = previewRef.current;
@@ -295,12 +304,22 @@ function ReelSlide({ video, onOpen }: { video: VideoItem; onOpen: () => void }) 
   return (
     <div
       ref={slideRef}
-      className={`reel-slide reel-slide--clean group/reel${showOpenBtn ? " is-pressed" : ""}`}
-      onPointerEnter={revealOpenBtn}
-      onPointerLeave={() => hideOpenBtn(true)}
-      onPointerDown={revealOpenBtn}
-      onPointerUp={(e) => hideOpenBtn(e.pointerType === "mouse")}
-      onPointerCancel={() => hideOpenBtn(true)}
+      className="reel-slide reel-slide--clean group/reel"
+      onPointerEnter={(e) => {
+        if (e.pointerType === "mouse") revealOpenBtn();
+      }}
+      onPointerLeave={(e) => {
+        if (e.pointerType === "mouse") scheduleHide(0);
+      }}
+      onPointerDown={(e) => {
+        if (e.pointerType === "touch") revealOpenBtn();
+      }}
+      onPointerUp={(e) => {
+        if (e.pointerType === "touch" && !btnTouchRef.current) {
+          scheduleHide(5000);
+        }
+      }}
+      onPointerCancel={() => scheduleHide(5000)}
     >
       <video
         ref={previewRef}
@@ -315,9 +334,27 @@ function ReelSlide({ video, onOpen }: { video: VideoItem; onOpen: () => void }) 
       />
       <button
         type="button"
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerEnter={revealOpenBtn}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          btnTouchRef.current = true;
+          revealOpenBtn();
+        }}
+        onPointerUp={(e) => {
+          e.stopPropagation();
+          btnTouchRef.current = false;
+        }}
+        onPointerCancel={(e) => {
+          e.stopPropagation();
+          btnTouchRef.current = false;
+          scheduleHide(5000);
+        }}
+        onPointerLeave={(e) => {
+          if (e.pointerType === "touch") scheduleHide(5000);
+        }}
         onClick={(e) => {
           e.stopPropagation();
+          cancelHide();
           onOpen();
         }}
         className="reel-fullscreen-btn"

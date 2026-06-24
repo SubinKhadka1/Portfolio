@@ -6,7 +6,7 @@ import { Loader2, Save, Trash2 } from "lucide-react";
 import UploadZone from "@/components/admin/UploadZone";
 import type { Category, Project, ProjectInput, ProjectType } from "@/lib/types/database";
 import { clampMarqueeRow } from "@/lib/marquee";
-import { detectDesignAspectRatioFromUrl, formatLabel } from "@/lib/design-image";
+import { detectDesignAspectRatioFromUrl, detectDesignDimensionsFromUrl, formatLabel } from "@/lib/design-image";
 import { parseResponseJson } from "@/lib/parse-response";
 
 type ProjectFormProps = {
@@ -126,12 +126,22 @@ export default function ProjectForm({
   }
 
   async function buildDesignPayload(media_url: string) {
-    const ratio = allowMultiple
-      ? urlAspectRatios[media_url] ?? (await detectDesignAspectRatioFromUrl(media_url))
-      : aspectRatio;
+    let resolvedAspect = aspectRatio;
+    let imageWidth = initial?.metadata?.imageWidth;
+    let imageHeight = initial?.metadata?.imageHeight;
+
+    if (allowMultiple || !imageWidth || !imageHeight) {
+      const detected = await detectDesignDimensionsFromUrl(media_url);
+      resolvedAspect = detected.aspectRatio;
+      imageWidth = detected.width;
+      imageHeight = detected.height;
+    }
+
     const metadata: ProjectInput["metadata"] = {
       color,
-      aspectRatio: ratio,
+      aspectRatio: resolvedAspect,
+      imageWidth,
+      imageHeight,
       marqueeRow: clampMarqueeRow(marqueeRow, portfolioRows),
     };
     return {

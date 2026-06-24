@@ -1,5 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import type { DesignItem } from "@/lib/types/database";
 import { loopForMarquee, groupDesignsByMarqueeRow } from "@/lib/marquee";
 import { PORTRAIT_DESIGN_IMAGES } from "@/lib/static-data";
@@ -92,6 +94,13 @@ export default function Portfolio({
           <p className="text-gray-500 text-sm mt-3 max-w-lg mx-auto leading-relaxed px-2">
             {designs.length} design{designs.length === 1 ? "" : "s"} · {rows} row{rows === 1 ? "" : "s"} · drag or scroll a row · hold to zoom
           </p>
+          <Link
+            href="/designs"
+            className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-purple-300 hover:text-purple-200 transition-colors"
+          >
+            View full design gallery
+            <ArrowUpRight size={16} />
+          </Link>
         </motion.div>
       </div>
 

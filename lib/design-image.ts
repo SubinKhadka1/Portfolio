@@ -35,4 +35,48 @@ export function formatLabel(aspectRatio: "square" | "portrait") {
   return aspectRatio === "portrait" ? "1080 × 1350" : "1080 × 1080";
 }
 
+export function detectDesignDimensionsFromUrl(
+  url: string
+): Promise<{ width: number; height: number; aspectRatio: DesignAspectRatio }> {
+  if (typeof window === "undefined") {
+    return Promise.resolve({ width: 1080, height: 1080, aspectRatio: "square" });
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const aspectRatio = aspectRatioFromDimensions(img.naturalWidth, img.naturalHeight);
+      resolve({
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+        aspectRatio,
+      });
+    };
+    img.onerror = () => resolve({ width: 1080, height: 1080, aspectRatio: "square" });
+    img.src = url;
+  });
+}
+
+export function designDisplayAspectRatio(design: {
+  imageWidth?: number;
+  imageHeight?: number;
+  aspectRatio?: "square" | "portrait";
+}): string {
+  if (design.imageWidth && design.imageHeight && design.imageWidth > 0 && design.imageHeight > 0) {
+    return `${design.imageWidth} / ${design.imageHeight}`;
+  }
+  return design.aspectRatio === "portrait" ? "4 / 5" : "1 / 1";
+}
+
+export function designIsPortrait(design: {
+  imageWidth?: number;
+  imageHeight?: number;
+  aspectRatio?: "square" | "portrait";
+}): boolean {
+  if (design.imageWidth && design.imageHeight) {
+    return design.imageHeight / design.imageWidth >= 1.12;
+  }
+  return design.aspectRatio === "portrait";
+}
+
 export type DesignAspectRatio = "square" | "portrait";

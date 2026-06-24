@@ -1,12 +1,13 @@
 import { tryCreateClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import {
-  getLocalDashboardStats,
-  getLocalProjects,
-} from "@/lib/local-portfolio";
+import { getLocalDashboardStats, getLocalProjects } from "@/lib/local-portfolio";
+import { getCategories } from "@/lib/categories";
+import { groupDesignsByCategory } from "@/lib/design-gallery";
+import { getSiteSettings } from "@/lib/site-settings-read";
 import { seedPortfolioIfEmpty, staticProjectsForAdmin } from "@/lib/seed";
 import { PORTRAIT_DESIGN_IMAGES } from "@/lib/static-data";
 import type {
+  Category,
   ClientItem,
   DesignItem,
   DashboardStats,
@@ -33,7 +34,8 @@ async function getLocalProjectsFiltered(
   return filterProjects(projects, options);
 }
 
-export function projectToDesign(p: Project): DesignItem {
+export function projectToDesign(p: Project, category?: Category | null): DesignItem {
+  const joined = category ?? p.categories ?? null;
   return {
     id: p.id,
     title: p.title,
@@ -44,6 +46,11 @@ export function projectToDesign(p: Project): DesignItem {
       (PORTRAIT_DESIGN_IMAGES.has(p.media_url) ? "portrait" : "square"),
     marqueeRow: p.metadata?.marqueeRow,
     sortOrder: p.sort_order,
+    categoryId: p.category_id,
+    categoryName: joined?.name,
+    categorySlug: joined?.slug,
+    imageWidth: p.metadata?.imageWidth,
+    imageHeight: p.metadata?.imageHeight,
   };
 }
 
@@ -121,8 +128,26 @@ export async function getProjects(
 }
 
 export async function getDesigns(): Promise<DesignItem[]> {
-  const projects = await getProjects("design");
-  return projects.map(projectToDesign);
+  const [projects, categories] = await Promise.all([getProjects("design"), getCategories("design")]);
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  return projects.map((p) => projectToDesign(p, p.category_id ? byId.get(p.category_id) : null));
+}
+
+export async function getDesignGalleryPageData() {
+  const [projects, categories, settings] = await Promise.all([
+    getProjects("design"),
+    getCategories("design"),
+    getSiteSettings(),
+  ]);
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  const designs = projects.map((p) =>
+    projectToDesign(p, p.category_id ? byId.get(p.category_id) : null)
+  );
+  return {
+    sections: groupDesignsByCategory(designs, categories),
+    settings,
+    totalDesigns: designs.length,
+  };
 }
 
 export async function getVideos(): Promise<VideoItem[]> {

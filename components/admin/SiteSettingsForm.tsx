@@ -240,6 +240,45 @@ export default function SiteSettingsForm({ initial }: { initial: SiteSettings })
         </div>
       </div>
 
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-5">
+        <div>
+          <h2 className="text-white font-semibold">Design Gallery Page</h2>
+          <p className="text-zinc-500 text-sm mt-1">
+            Text shown on the full <span className="text-zinc-300">/designs</span> page opened from &quot;See My Designs&quot;.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-zinc-400 text-xs font-medium mb-2">Eyebrow label</label>
+            <input
+              value={settings.designGalleryEyebrow}
+              onChange={(e) => update("designGalleryEyebrow", e.target.value)}
+              className="admin-input"
+              placeholder="Full Portfolio"
+            />
+          </div>
+          <div>
+            <label className="block text-zinc-400 text-xs font-medium mb-2">Page heading</label>
+            <input
+              value={settings.designGalleryTitle}
+              onChange={(e) => update("designGalleryTitle", e.target.value)}
+              className="admin-input"
+              placeholder="My Design Work"
+            />
+          </div>
+          <div>
+            <label className="block text-zinc-400 text-xs font-medium mb-2">Intro text</label>
+            <textarea
+              value={settings.designGallerySubtitle}
+              onChange={(e) => update("designGallerySubtitle", e.target.value)}
+              className="admin-input min-h-[96px]"
+              placeholder="Flyers, menus, banners, brochures, and more."
+            />
+          </div>
+        </div>
+      </div>
+
       {message && (
         <p className={`text-sm ${message.includes("failed") || message.includes("error") ? "text-red-400" : "text-green-400"}`}>
           {message}

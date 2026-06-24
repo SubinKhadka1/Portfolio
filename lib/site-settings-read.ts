@@ -12,6 +12,9 @@ export type SiteSettings = {
   clientScrollDuration: number;
   videoRepeat: number;
   videoScrollDuration: number;
+  designGalleryEyebrow: string;
+  designGalleryTitle: string;
+  designGallerySubtitle: string;
 };
 
 const SETTINGS_JSON = "data/site-settings.json";
@@ -27,6 +30,10 @@ const DEFAULT_SETTINGS: SiteSettings = {
   clientScrollDuration: 45,
   videoRepeat: 2,
   videoScrollDuration: 35,
+  designGalleryEyebrow: "Full Portfolio",
+  designGalleryTitle: "My Design Work",
+  designGallerySubtitle:
+    "Flyers, menus, banners, brochures, tickets, and more — sized naturally for each format.",
 };
 
 export function normalizeSiteSettings(raw: Partial<SiteSettings>): SiteSettings {
@@ -47,6 +54,9 @@ export function normalizeSiteSettings(raw: Partial<SiteSettings>): SiteSettings 
     videoScrollDuration: clampScrollDuration(
       raw.videoScrollDuration ?? DEFAULT_SETTINGS.videoScrollDuration
     ),
+    designGalleryEyebrow: raw.designGalleryEyebrow || DEFAULT_SETTINGS.designGalleryEyebrow,
+    designGalleryTitle: raw.designGalleryTitle || DEFAULT_SETTINGS.designGalleryTitle,
+    designGallerySubtitle: raw.designGallerySubtitle || DEFAULT_SETTINGS.designGallerySubtitle,
   };
 }
 

@@ -4,6 +4,8 @@ export type DesignMetadata = {
   color?: string;
   aspectRatio?: "square" | "portrait";
   marqueeRow?: 1 | 2 | 3;
+  imageWidth?: number;
+  imageHeight?: number;
 };
 
 export type VideoMetadata = {
@@ -24,7 +26,9 @@ export type Category = {
   id: string;
   name: string;
   slug: string;
+  description?: string;
   project_type: ProjectType;
+  sort_order: number;
   created_at: string;
 };
 
@@ -77,6 +81,11 @@ export type DesignItem = {
   aspectRatio?: "square" | "portrait";
   marqueeRow?: 1 | 2 | 3;
   sortOrder?: number;
+  categoryId?: string | null;
+  categoryName?: string;
+  categorySlug?: string;
+  imageWidth?: number;
+  imageHeight?: number;
 };
 
 export type VideoItem = {

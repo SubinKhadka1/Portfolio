@@ -13,12 +13,14 @@ import {
   Settings,
   Menu,
   X,
+  FolderOpen,
 } from "lucide-react";
 import { useState } from "react";
 
 const links = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/projects?type=design", label: "Designs", icon: Image },
+  { href: "/admin/categories", label: "Gallery Categories", icon: FolderOpen },
   { href: "/admin/projects?type=video", label: "Videos", icon: Video },
   { href: "/admin/projects?type=client", label: "Clients", icon: Users },
   { href: "/admin/settings", label: "Site Settings", icon: Settings },
@@ -74,6 +76,8 @@ export default function AdminSidebar() {
                 ? pathname === "/admin"
                 : href === "/admin/settings"
                   ? pathname === "/admin/settings"
+                  : href === "/admin/categories"
+                    ? pathname === "/admin/categories"
                   : pathname.startsWith("/admin/projects") && linkType === currentType;
 
             return (
@@ -95,6 +99,14 @@ export default function AdminSidebar() {
         </nav>
 
         <div className="p-3 border-t border-zinc-800 space-y-1">
+          <Link
+            href="/designs"
+            target="_blank"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors"
+          >
+            <ExternalLink size={18} />
+            View Design Gallery
+          </Link>
           <Link
             href="/"
             target="_blank"
