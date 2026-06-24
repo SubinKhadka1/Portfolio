@@ -66,7 +66,7 @@ export default function Navbar({ variant }: { variant?: "light" | "dark" }) {
         >
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight">
             <span className={light ? "text-zinc-900" : "text-white"}>Subin</span>
-            <span className="text-purple-500">x</span>
+            <span className="text-purple-500 text-[0.72em] leading-none align-baseline">x</span>
           </h1>
         </motion.a>
 
