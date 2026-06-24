@@ -1,6 +1,6 @@
 export const WHATSAPP_NUMBER = "9779841413038";
 export const WHATSAPP_DISPLAY = "+977 9841413038";
-export const CONTACT_EMAIL = "subingraphix@gmail.com";
+export const CONTACT_EMAIL = "subin.graphix@gmail.com";
 
 export const SOCIAL_LINKS = {
   linkedin: "https://www.linkedin.com/in/subin-khadka-233a53292/",
