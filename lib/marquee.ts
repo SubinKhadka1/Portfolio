@@ -98,3 +98,7 @@ export function clampMarqueeRows(value: number) {
 export function clampScrollDuration(value: number) {
   return Math.max(35, Math.min(120, Math.round(value) || 55));
 }
+
+export function clampClientScrollDuration(value: number) {
+  return Math.max(18, Math.min(75, Math.round(value) || 22));
+}

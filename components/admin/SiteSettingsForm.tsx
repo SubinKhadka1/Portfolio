@@ -50,6 +50,14 @@ const scrollSpeedOptions = [
   { value: 90, label: "Very slow" },
 ];
 
+const clientScrollSpeedOptions = [
+  { value: 18, label: "Very fast" },
+  { value: 22, label: "Fast (recommended)" },
+  { value: 30, label: "Medium" },
+  { value: 45, label: "Normal" },
+  { value: 60, label: "Slow" },
+];
+
 export default function SiteSettingsForm({ initial }: { initial: SiteSettings }) {
   const [settings, setSettings] = useState(initial);
   const [uploading, setUploading] = useState(false);
@@ -220,8 +228,8 @@ export default function SiteSettingsForm({ initial }: { initial: SiteSettings })
             label="Client scroll speed"
             value={settings.clientScrollDuration}
             onChange={(v) => update("clientScrollDuration", v)}
-            hint="Slower scroll = logos repeat less often."
-            options={scrollSpeedOptions}
+            hint="Lower = faster client logo scroll."
+            options={clientScrollSpeedOptions}
           />
           <SettingSelect
             label="Video loop copies"

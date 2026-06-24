@@ -227,12 +227,6 @@ body {
   flex-shrink: 0;
   padding: 1rem 1.5rem;
   border-radius: 1rem;
-  transition: transform 0.3s ease, background 0.3s ease;
-}
-
-.logo-slide:hover {
-  transform: scale(1.05);
-  background: rgba(124, 58, 237, 0.05);
 }
 
 /* Flyer cards */

@@ -1,5 +1,5 @@
 import { readJsonFile, writeJsonFile } from "@/lib/json-store";
-import { clampMarqueeRepeat, clampMarqueeRows, clampScrollDuration } from "@/lib/marquee";
+import { clampMarqueeRepeat, clampMarqueeRows, clampScrollDuration, clampClientScrollDuration } from "@/lib/marquee";
 
 export type SiteSettings = {
   heroImage: string;
@@ -27,7 +27,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   portfolioScrollDuration: 35,
   clientRows: 2,
   clientRepeat: 2,
-  clientScrollDuration: 45,
+  clientScrollDuration: 22,
   videoRepeat: 2,
   videoScrollDuration: 35,
   designGalleryEyebrow: "Full Portfolio",
@@ -47,7 +47,7 @@ export function normalizeSiteSettings(raw: Partial<SiteSettings>): SiteSettings 
     ),
     clientRows: clampMarqueeRows(raw.clientRows ?? DEFAULT_SETTINGS.clientRows),
     clientRepeat: clampMarqueeRepeat(raw.clientRepeat ?? DEFAULT_SETTINGS.clientRepeat),
-    clientScrollDuration: clampScrollDuration(
+    clientScrollDuration: clampClientScrollDuration(
       raw.clientScrollDuration ?? DEFAULT_SETTINGS.clientScrollDuration
     ),
     videoRepeat: clampMarqueeRepeat(raw.videoRepeat ?? DEFAULT_SETTINGS.videoRepeat),

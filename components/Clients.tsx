@@ -10,7 +10,8 @@ function ClientLogo({ name, logo, className }: { name: string; logo: string; cla
     <img
       src={logo}
       alt={`${name} logo`}
-      className={`h-20 md:h-24 w-auto max-w-[200px] md:max-w-[250px] object-contain opacity-100 transition-all duration-300 ${className || ""}`}
+      className={`h-20 md:h-24 w-auto max-w-[200px] md:max-w-[250px] object-contain opacity-100 ${className || ""}`}
+      draggable={false}
     />
   );
 }
@@ -26,7 +27,7 @@ export default function Clients({
   clients = [],
   rows = 2,
   repeat = 2,
-  scrollDuration = 45,
+  scrollDuration = 22,
 }: ClientsProps) {
   if (clients.length === 0) return null;
 
@@ -61,9 +62,10 @@ export default function Clients({
                 repeatCount={repeat}
                 durationSec={scrollDuration}
                 className="logo-track"
+                interactive={false}
               >
                 {looped.map((client, j) => (
-                  <div key={`${client.name}-${j}`} className={`logo-slide group ${client.containerClass || ""}`}>
+                  <div key={`${client.name}-${j}`} className={`logo-slide ${client.containerClass || ""}`}>
                     <ClientLogo name={client.name} logo={client.logo} className={client.className} />
                   </div>
                 ))}

@@ -17,6 +17,7 @@ type MarqueeTrackProps = {
   durationSec?: number;
   className?: string;
   animationClass?: "marquee" | "logo-marquee";
+  interactive?: boolean;
 };
 
 function wrapMarqueeX(value: number, loopWidth: number) {
@@ -34,6 +35,7 @@ export default function MarqueeTrack({
   durationSec = 40,
   className = "showcase-track",
   animationClass = "marquee",
+  interactive = true,
 }: MarqueeTrackProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
@@ -111,7 +113,7 @@ export default function MarqueeTrack({
 
   useEffect(() => {
     const el = containerRef.current;
-    if (!el || !scrollEnabled) return;
+    if (!el || !scrollEnabled || !interactive) return;
 
     const onWheel = (e: WheelEvent) => {
       const absX = Math.abs(e.deltaX);
@@ -130,7 +132,7 @@ export default function MarqueeTrack({
       el.removeEventListener("wheel", onWheel);
       if (wheelTimeoutRef.current) clearTimeout(wheelTimeoutRef.current);
     };
-  }, [loopWidth, scrollEnabled, x]);
+  }, [loopWidth, scrollEnabled, x, interactive]);
 
   return (
     <MarqueePauseContext.Provider value={pauseContext}>
@@ -138,19 +140,22 @@ export default function MarqueeTrack({
         <motion.div
           ref={rowRef}
           className={`${rowClass} ${scrollEnabled ? "" : "marquee-static"} ${
-            userPaused || holdPaused || isDragging ? "marquee-paused" : ""
+            interactive && (userPaused || holdPaused || isDragging) ? "marquee-paused" : ""
           }`}
-          drag={scrollEnabled && !holdPaused ? "x" : false}
+          drag={interactive && scrollEnabled && !holdPaused ? "x" : false}
           dragElastic={0}
           dragMomentum={false}
           onDrag={() => {
-            if (loopWidth > 0) x.set(wrapMarqueeX(x.get(), loopWidth));
+            if (!interactive || loopWidth <= 0) return;
+            x.set(wrapMarqueeX(x.get(), loopWidth));
           }}
           onDragStart={() => {
+            if (!interactive) return;
             setIsDragging(true);
             setUserPaused(true);
           }}
           onDragEnd={() => {
+            if (!interactive) return;
             if (loopWidth > 0) x.set(wrapMarqueeX(x.get(), loopWidth));
             setIsDragging(false);
             if (wheelTimeoutRef.current) clearTimeout(wheelTimeoutRef.current);
@@ -158,10 +163,10 @@ export default function MarqueeTrack({
           }}
           style={{
             x,
-            cursor: scrollEnabled ? "grab" : "default",
-            touchAction: "pan-y",
+            cursor: interactive && scrollEnabled ? "grab" : "default",
+            touchAction: interactive ? "pan-y" : "auto",
           }}
-          whileDrag={{ cursor: "grabbing" }}
+          whileDrag={interactive ? { cursor: "grabbing" } : undefined}
         >
           {children}
         </motion.div>
