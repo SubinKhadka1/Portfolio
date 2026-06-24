@@ -6,6 +6,10 @@ export type DesignMetadata = {
   marqueeRow?: 1 | 2 | 3;
   imageWidth?: number;
   imageHeight?: number;
+  showOnHomepage?: boolean;
+  showInGallery?: boolean;
+  homepageSortOrder?: number;
+  gallerySortOrder?: number;
 };
 
 export type VideoMetadata = {
@@ -81,6 +85,7 @@ export type DesignItem = {
   aspectRatio?: "square" | "portrait";
   marqueeRow?: 1 | 2 | 3;
   sortOrder?: number;
+  gallerySortOrder?: number;
   categoryId?: string | null;
   categoryName?: string;
   categorySlug?: string;

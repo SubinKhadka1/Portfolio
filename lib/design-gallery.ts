@@ -25,12 +25,15 @@ export function groupDesignsByCategory(
     slug: category.slug,
     designs: designs
       .filter((d) => d.categoryId === category.id)
-      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
+      .sort((a, b) => (a.gallerySortOrder ?? a.sortOrder ?? 0) - (b.gallerySortOrder ?? b.sortOrder ?? 0)),
   }));
 
   const uncategorized = designs
     .filter((d) => !d.categoryId || !sortedCategories.some((c) => c.id === d.categoryId))
-    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    .sort(
+      (a, b) =>
+        (a.gallerySortOrder ?? a.sortOrder ?? 0) - (b.gallerySortOrder ?? b.sortOrder ?? 0)
+    );
 
   if (uncategorized.length > 0) {
     sections.push({

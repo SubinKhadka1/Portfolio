@@ -1,4 +1,8 @@
 import type { Project } from "@/lib/types/database";
+import {
+  filterHomepageProjects,
+  getHomepageSortOrder,
+} from "@/lib/design-placement";
 
 /** Duplicate row content for seamless infinite loop (2× is standard). */
 export function loopForMarquee<T>(items: T[], repeatCount = 2): T[] {
@@ -74,11 +78,12 @@ export function groupDesignsByMarqueeRow<T extends RowAssignable>(
 
 export function groupProjectsByMarqueeRow(projects: Project[], rowCount = 3): Project[][] {
   const rows = clampMarqueeRows(rowCount);
+  const homepageProjects = filterHomepageProjects(projects);
   return Array.from({ length: rows }, (_, i) => {
     const rowNum = i + 1;
-    return projects
+    return homepageProjects
       .filter((p) => clampMarqueeRow(p.metadata?.marqueeRow ?? 1, rows) === rowNum)
-      .sort((a, b) => a.sort_order - b.sort_order);
+      .sort((a, b) => getHomepageSortOrder(a) - getHomepageSortOrder(b));
   });
 }
 

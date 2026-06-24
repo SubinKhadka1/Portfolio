@@ -3,6 +3,12 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getLocalDashboardStats, getLocalProjects } from "@/lib/local-portfolio";
 import { getCategories } from "@/lib/categories";
 import { groupDesignsByCategory } from "@/lib/design-gallery";
+import {
+  filterGalleryProjects,
+  filterHomepageProjects,
+  getGallerySortOrder,
+  getHomepageSortOrder,
+} from "@/lib/design-placement";
 import { getSiteSettings } from "@/lib/site-settings-read";
 import { seedPortfolioIfEmpty, staticProjectsForAdmin } from "@/lib/seed";
 import { PORTRAIT_DESIGN_IMAGES } from "@/lib/static-data";
@@ -45,7 +51,8 @@ export function projectToDesign(p: Project, category?: Category | null): DesignI
       p.metadata?.aspectRatio ||
       (PORTRAIT_DESIGN_IMAGES.has(p.media_url) ? "portrait" : "square"),
     marqueeRow: p.metadata?.marqueeRow,
-    sortOrder: p.sort_order,
+    sortOrder: getHomepageSortOrder(p),
+    gallerySortOrder: getGallerySortOrder(p),
     categoryId: p.category_id,
     categoryName: joined?.name,
     categorySlug: joined?.slug,
@@ -130,7 +137,8 @@ export async function getProjects(
 export async function getDesigns(): Promise<DesignItem[]> {
   const [projects, categories] = await Promise.all([getProjects("design"), getCategories("design")]);
   const byId = new Map(categories.map((c) => [c.id, c]));
-  return projects.map((p) => projectToDesign(p, p.category_id ? byId.get(p.category_id) : null));
+  return filterHomepageProjects(projects)
+    .map((p) => projectToDesign(p, p.category_id ? byId.get(p.category_id) : null));
 }
 
 export async function getDesignGalleryPageData() {
@@ -140,7 +148,7 @@ export async function getDesignGalleryPageData() {
     getSiteSettings(),
   ]);
   const byId = new Map(categories.map((c) => [c.id, c]));
-  const designs = projects.map((p) =>
+  const designs = filterGalleryProjects(projects).map((p) =>
     projectToDesign(p, p.category_id ? byId.get(p.category_id) : null)
   );
   return {

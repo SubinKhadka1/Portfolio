@@ -80,6 +80,37 @@ function migrateDesignRows(designs: Project[]): { designs: Project[]; changed: b
   return { designs: migrated, changed: true };
 }
 
+function migrateDesignPlacement(designs: Project[]): { designs: Project[]; changed: boolean } {
+  let changed = false;
+  const migrated = designs.map((p) => {
+    const meta = { ...p.metadata };
+    let touched = false;
+
+    if (meta.homepageSortOrder == null) {
+      meta.homepageSortOrder = p.sort_order;
+      touched = true;
+    }
+    if (meta.gallerySortOrder == null) {
+      meta.gallerySortOrder = p.sort_order;
+      touched = true;
+    }
+    if (meta.showOnHomepage == null) {
+      meta.showOnHomepage = true;
+      touched = true;
+    }
+    if (meta.showInGallery == null) {
+      meta.showInGallery = true;
+      touched = true;
+    }
+
+    if (!touched) return p;
+    changed = true;
+    return { ...p, metadata: meta };
+  });
+
+  return { designs: migrated, changed };
+}
+
 type PortfolioStore = Record<ProjectType, Project[]>;
 
 function typeKey(type: ProjectType): ProjectType {
@@ -154,6 +185,12 @@ function migrateStore(store: PortfolioStore): PortfolioStore {
   const rowMigration = migrateDesignRows(store.design);
   if (rowMigration.changed) {
     store.design = rowMigration.designs;
+    changed = true;
+  }
+
+  const placementMigration = migrateDesignPlacement(store.design);
+  if (placementMigration.changed) {
+    store.design = placementMigration.designs;
     changed = true;
   }
 
@@ -302,6 +339,33 @@ export async function createLocalProject(input: ProjectInput): Promise<Project> 
       sortOrder = marqueeSortOrder(row, inRow.length);
     }
 
+    const designMetadata =
+      type === "design"
+        ? {
+            ...input.metadata,
+            marqueeRow: clampMarqueeRow(input.metadata?.marqueeRow ?? 1),
+            showOnHomepage: input.metadata?.showOnHomepage ?? true,
+            showInGallery: input.metadata?.showInGallery ?? true,
+            homepageSortOrder:
+              input.metadata?.homepageSortOrder ??
+              marqueeSortOrder(
+                clampMarqueeRow(input.metadata?.marqueeRow ?? 1),
+                store.design.filter(
+                  (p) =>
+                    p.metadata?.showOnHomepage !== false &&
+                    clampMarqueeRow(p.metadata?.marqueeRow ?? 1) ===
+                      clampMarqueeRow(input.metadata?.marqueeRow ?? 1)
+                ).length
+              ),
+            gallerySortOrder: input.metadata?.gallerySortOrder ?? sortOrder,
+          }
+        : type === "client"
+          ? {
+              ...input.metadata,
+              marqueeRow: clampMarqueeRow(input.metadata?.marqueeRow ?? 1),
+            }
+          : input.metadata || {};
+
     project = {
       id: projectId,
       type: input.type,
@@ -313,13 +377,7 @@ export async function createLocalProject(input: ProjectInput): Promise<Project> 
       featured: input.featured ?? false,
       published: input.published ?? true,
       sort_order: sortOrder,
-      metadata:
-        type === "design" || type === "client"
-          ? {
-              ...input.metadata,
-              marqueeRow: clampMarqueeRow(input.metadata?.marqueeRow ?? 1),
-            }
-          : input.metadata || {},
+      metadata: designMetadata,
       created_at: now,
       updated_at: now,
       categories: null,
@@ -391,25 +449,27 @@ export async function deleteLocalProject(id: string): Promise<boolean> {
 }
 
 export async function reorderLocalProjects(
-  items: { id: string; sort_order: number; metadata?: Project["metadata"] }[]
+  items: { id: string; sort_order?: number; metadata?: Project["metadata"] }[],
+  scope: "homepage" | "default" = "default"
 ): Promise<void> {
   const itemMap = new Map(items.map((i) => [i.id, i]));
 
   await updatePortfolioStore((store) => {
     for (const type of ["design", "video", "client"] as ProjectType[]) {
-      let touched = false;
       store[type] = store[type].map((p) => {
         const item = itemMap.get(p.id);
         if (!item) return p;
-        touched = true;
         return {
           ...p,
-          sort_order: item.sort_order,
+          ...(scope === "default" && item.sort_order !== undefined
+            ? { sort_order: item.sort_order }
+            : {}),
           metadata: item.metadata ? { ...p.metadata, ...item.metadata } : p.metadata,
           updated_at: new Date().toISOString(),
         };
       });
-      if (touched) {
+
+      if (scope === "default") {
         store[type].sort((a, b) => a.sort_order - b.sort_order);
       }
     }

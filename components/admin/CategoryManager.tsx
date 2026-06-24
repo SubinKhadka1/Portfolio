@@ -115,9 +115,8 @@ export default function CategoryManager({ initial }: { initial: Category[] }) {
     <div className="space-y-6 max-w-3xl">
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
         <h2 className="text-white font-semibold">Gallery Categories</h2>
-        <p className="text-zinc-500 text-sm mt-1">
-          Headings on the <span className="text-zinc-300">/designs</span> page — e.g. Food Menu, Flyer, Pull Up Banner.
-          Assign each design to a category when adding or editing it.
+          <p className="text-zinc-500 text-sm mt-1">
+          Headings on the <span className="text-zinc-300">/designs</span> page only — independent from the homepage marquee.
         </p>
       </div>
 

@@ -32,7 +32,7 @@ export default async function AdminProjectsPage({ searchParams }: PageProps) {
           <h1 className="text-2xl font-bold text-white">{labels[type]}</h1>
           {type === "design" ? (
             <p className="text-zinc-500 text-xs sm:text-sm mt-1">
-              {projects.length} designs · add and manage by showcase row below
+              {projects.length} designs · homepage marquee rows below (independent from /designs gallery)
             </p>
           ) : type === "client" ? (
             <p className="text-zinc-500 text-xs sm:text-sm mt-1">

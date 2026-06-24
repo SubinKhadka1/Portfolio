@@ -73,6 +73,8 @@ export default function ProjectForm({
   const [duration, setDuration] = useState(initial?.metadata?.duration || "0:30");
   const [clipStart, setClipStart] = useState(initial?.metadata?.clipStart ?? 0);
   const [clipEnd, setClipEnd] = useState(initial?.metadata?.clipEnd ?? 8);
+  const [showOnHomepage, setShowOnHomepage] = useState(initial?.metadata?.showOnHomepage ?? true);
+  const [showInGallery, setShowInGallery] = useState(initial?.metadata?.showInGallery ?? true);
   const [className, setClassName] = useState(initial?.metadata?.className || "");
   const [containerClass, setContainerClass] = useState(initial?.metadata?.containerClass || "");
 
@@ -96,6 +98,8 @@ export default function ProjectForm({
       metadata.color = color;
       metadata.aspectRatio = aspectRatio;
       metadata.marqueeRow = clampMarqueeRow(marqueeRow, portfolioRows);
+      metadata.showOnHomepage = showOnHomepage;
+      metadata.showInGallery = showInGallery;
     }
     if (type === "video") {
       metadata.duration = duration;
@@ -143,6 +147,8 @@ export default function ProjectForm({
       imageWidth,
       imageHeight,
       marqueeRow: clampMarqueeRow(marqueeRow, portfolioRows),
+      showOnHomepage,
+      showInGallery,
     };
     return {
       type,
@@ -333,7 +339,37 @@ export default function ProjectForm({
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
+        <p className="text-zinc-600 text-xs mt-1">Used on the /designs gallery page only.</p>
       </div>
+
+      {type === "design" && (
+        <div className="grid sm:grid-cols-2 gap-3">
+          <label className="flex items-start gap-2.5 p-3 rounded-lg border border-zinc-800 bg-zinc-950/50 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showOnHomepage}
+              onChange={(e) => setShowOnHomepage(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="block text-sm text-white font-medium">Homepage marquee</span>
+              <span className="block text-xs text-zinc-500 mt-0.5">Show in the scrolling showcase on the main site.</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2.5 p-3 rounded-lg border border-zinc-800 bg-zinc-950/50 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showInGallery}
+              onChange={(e) => setShowInGallery(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="block text-sm text-white font-medium">Design gallery page</span>
+              <span className="block text-xs text-zinc-500 mt-0.5">Show on /designs under the selected category.</span>
+            </span>
+          </label>
+        </div>
+      )}
 
       {type === "design" && (
         <>

@@ -9,6 +9,7 @@ import {
   Eye,
   EyeOff,
   GripVertical,
+  Home,
   Pencil,
   Plus,
   Trash2,
@@ -17,9 +18,9 @@ import {
   clampMarqueeRow,
   clampMarqueeRows,
   groupProjectsByMarqueeRow,
-  marqueeSortOrder,
 } from "@/lib/marquee";
-import { buildReorderItems } from "@/lib/reorder-payload";
+import { buildHomepageReorderItems } from "@/lib/reorder-payload";
+import { homepageSortValue } from "@/lib/design-placement";
 import { parseResponseJson } from "@/lib/parse-response";
 import type { Project } from "@/lib/types/database";
 
@@ -71,6 +72,7 @@ function DesignRowCard({
   onDrop,
   onMoveRow,
   onTogglePublished,
+  onRemoveFromHomepage,
   onDelete,
 }: {
   project: Project;
@@ -81,6 +83,7 @@ function DesignRowCard({
   onDrop: () => void;
   onMoveRow: (row: number) => void;
   onTogglePublished: () => void;
+  onRemoveFromHomepage: () => void;
   onDelete: () => void;
 }) {
   const isPortrait = project.metadata?.aspectRatio === "portrait";
@@ -145,6 +148,14 @@ function DesignRowCard({
             {project.published ? <Eye size={12} /> : <EyeOff size={12} />}
           </button>
           <div className="flex gap-0.5">
+            <button
+              type="button"
+              onClick={onRemoveFromHomepage}
+              title="Remove from homepage only"
+              className="p-1 rounded-md text-zinc-400 hover:text-amber-400 hover:bg-zinc-800 transition-colors"
+            >
+              <Home size={12} />
+            </button>
             <Link
               href={`/admin/projects/${project.id}`}
               className="p-1 rounded-md text-zinc-400 hover:text-purple-400 hover:bg-zinc-800 transition-colors"
@@ -203,11 +214,11 @@ export default function DesignRowManager({
     [projects, rowCount]
   );
 
-  async function persistReorder(items: ReturnType<typeof buildReorderItems>) {
+  async function persistReorder(items: ReturnType<typeof buildHomepageReorderItems>) {
     const res = await fetch("/api/projects/reorder", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items }),
+      body: JSON.stringify({ items, scope: "homepage" }),
       cache: "no-store",
     });
     const data = await parseResponseJson<{ error?: string }>(res);
@@ -219,7 +230,7 @@ export default function DesignRowManager({
   }
 
   async function persistRowOrder(row: number, rowProjects: Project[]) {
-    await persistReorder(buildReorderItems(rowProjects, row));
+    await persistReorder(buildHomepageReorderItems(rowProjects, row));
   }
 
   async function updateProject(
@@ -259,8 +270,12 @@ export default function DesignRowManager({
   function normalizeRowProjects(rowProjects: Project[], rowNum: number) {
     return rowProjects.map((p, index) => ({
       ...p,
-      metadata: { ...p.metadata, marqueeRow: rowNum as 1 | 2 | 3 },
-      sort_order: marqueeSortOrder(rowNum, index),
+      metadata: {
+        ...p.metadata,
+        marqueeRow: rowNum as 1 | 2 | 3,
+        homepageSortOrder: homepageSortValue(rowNum, index),
+        showOnHomepage: true,
+      },
     }));
   }
 
@@ -298,8 +313,8 @@ export default function DesignRowManager({
         applyRowState([...normalizedSource, ...normalizedTarget]);
 
         await persistReorder([
-          ...buildReorderItems(normalizedSource, sourceRow + 1),
-          ...buildReorderItems(normalizedTarget, targetRowNum),
+          ...buildHomepageReorderItems(normalizedSource, sourceRow + 1),
+          ...buildHomepageReorderItems(normalizedTarget, targetRowNum),
         ]);
       }
     } catch (err) {
@@ -333,8 +348,8 @@ export default function DesignRowManager({
       applyRowState([...normalizedSource, ...normalizedTarget]);
 
       await persistReorder([
-        ...buildReorderItems(normalizedSource, currentRow),
-        ...buildReorderItems(normalizedTarget, targetRow),
+        ...buildHomepageReorderItems(normalizedSource, currentRow),
+        ...buildHomepageReorderItems(normalizedTarget, targetRow),
       ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -348,6 +363,19 @@ export default function DesignRowManager({
     }
   }
 
+  async function removeFromHomepage(project: Project) {
+    if (
+      !confirm(
+        `Remove "${project.title || "this design"}" from the homepage showcase only? It will stay on the /designs gallery page.`
+      )
+    ) {
+      return;
+    }
+    await updateProject(project.id, {
+      metadata: { ...project.metadata, showOnHomepage: false },
+    });
+  }
+
   return (
     <div className="space-y-4 sm:space-y-5">
       {error && (
@@ -356,16 +384,13 @@ export default function DesignRowManager({
         </p>
       )}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl px-3 sm:px-4 py-3 text-xs sm:text-sm text-zinc-400 leading-relaxed">
-        Designs are organized into{" "}
-        <strong className="text-zinc-200">
-          {rowCount} row{rowCount === 1 ? "" : "s"}
-        </strong>{" "}
-        matching your homepage showcase. Use <strong className="text-zinc-300">Add to row</strong> on any
-        row, drag to reorder, or move designs between rows. Change row count in{" "}
-        <Link href="/admin/settings" className="text-purple-400 hover:text-purple-300">
-          Site Settings
-        </Link>
-        .
+        Designs here control only the <strong className="text-zinc-200">homepage marquee</strong>. Reordering
+        or moving rows does <strong className="text-zinc-200">not</strong> change the{" "}
+        <Link href="/designs" target="_blank" className="text-purple-400 hover:text-purple-300">
+          /designs
+        </Link>{" "}
+        gallery page. Use <strong className="text-zinc-300">Add to row</strong> to add flyers, drag to
+        reorder, or move between rows. Remove with the home icon to hide from homepage only.
       </div>
 
       {Array.from({ length: rowCount }, (_, rowIndex) => {
@@ -428,6 +453,7 @@ export default function DesignRowManager({
                       onDrop={() => handleDrop(rowIndex, index)}
                       onMoveRow={(row) => moveToRow(project, row)}
                       onTogglePublished={() => togglePublished(project.id, !project.published)}
+                      onRemoveFromHomepage={() => removeFromHomepage(project)}
                       onDelete={() => handleDelete(project.id)}
                     />
                   ))}
