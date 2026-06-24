@@ -163,60 +163,145 @@ function VideoModal({
 }
 
 function ReelSlide({ video, onOpen }: { video: VideoItem; onOpen: () => void }) {
+  const slideRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLVideoElement>(null);
+  const visibleRef = useRef(false);
+  const hideBtnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showOpenBtn, setShowOpenBtn] = useState(false);
   const clipStart = Math.max(0, video.clipStart ?? 0);
   const clipEnd = Math.max(clipStart + 0.5, video.clipEnd ?? 8);
 
+  const revealOpenBtn = useCallback(() => {
+    if (hideBtnTimerRef.current) {
+      clearTimeout(hideBtnTimerRef.current);
+      hideBtnTimerRef.current = null;
+    }
+    setShowOpenBtn(true);
+  }, []);
+
+  const hideOpenBtn = useCallback((immediate = false) => {
+    if (hideBtnTimerRef.current) clearTimeout(hideBtnTimerRef.current);
+    const delay = immediate ? 0 : 1800;
+    hideBtnTimerRef.current = setTimeout(() => {
+      setShowOpenBtn(false);
+      hideBtnTimerRef.current = null;
+    }, delay);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (hideBtnTimerRef.current) clearTimeout(hideBtnTimerRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     const el = previewRef.current;
-    if (!el) return;
+    const slide = slideRef.current;
+    if (!el || !slide) return;
+
+    let retryTimer: number | null = null;
 
     const seekToStart = () => {
-      if (Math.abs(el.currentTime - clipStart) > 0.15) {
+      if (Math.abs(el.currentTime - clipStart) > 0.12) {
         el.currentTime = clipStart;
       }
     };
 
     const loopClip = () => {
-      if (el.currentTime >= clipEnd - 0.05) {
+      if (el.currentTime >= clipEnd - 0.08) {
         el.currentTime = clipStart;
-        void el.play();
       }
     };
 
     const playClip = () => {
+      if (!visibleRef.current || document.hidden) return;
       el.muted = true;
+      el.defaultMuted = true;
+      el.playsInline = true;
+      el.preload = "auto";
       seekToStart();
-      void el.play().catch(() => {});
+      const attempt = el.play();
+      if (attempt) {
+        attempt.catch(() => {
+          window.setTimeout(() => {
+            if (visibleRef.current && el.paused) {
+              void el.play().catch(() => {});
+            }
+          }, 250);
+        });
+      }
+    };
+
+    const pauseClip = () => {
+      el.pause();
     };
 
     const onVisibility = (entries: IntersectionObserverEntry[]) => {
-      if (entries[0]?.isIntersecting) playClip();
-      else el.pause();
+      const visible = Boolean(entries[0]?.isIntersecting);
+      visibleRef.current = visible;
+      if (visible) playClip();
+      else pauseClip();
+    };
+
+    const onPageVisible = () => {
+      if (visibleRef.current) playClip();
+    };
+
+    const onStalled = () => {
+      if (visibleRef.current) playClip();
+    };
+
+    const onPause = () => {
+      if (visibleRef.current && !document.hidden) {
+        window.setTimeout(playClip, 120);
+      }
     };
 
     el.addEventListener("loadedmetadata", playClip);
     el.addEventListener("canplay", playClip);
     el.addEventListener("timeupdate", loopClip);
+    el.addEventListener("stalled", onStalled);
+    el.addEventListener("waiting", onStalled);
+    el.addEventListener("pause", onPause);
+    document.addEventListener("visibilitychange", onPageVisible);
 
     if (el.readyState >= 1) playClip();
 
     const observer = new IntersectionObserver(onVisibility, {
-      threshold: 0.2,
-      rootMargin: "40px",
+      threshold: [0, 0.15, 0.35],
+      rootMargin: "80px 0px",
     });
-    observer.observe(el);
+    observer.observe(slide);
+
+    retryTimer = window.setInterval(() => {
+      if (visibleRef.current && !document.hidden && el.paused) {
+        playClip();
+      }
+    }, 2500);
 
     return () => {
       el.removeEventListener("loadedmetadata", playClip);
       el.removeEventListener("canplay", playClip);
       el.removeEventListener("timeupdate", loopClip);
+      el.removeEventListener("stalled", onStalled);
+      el.removeEventListener("waiting", onStalled);
+      el.removeEventListener("pause", onPause);
+      document.removeEventListener("visibilitychange", onPageVisible);
       observer.disconnect();
+      if (retryTimer) window.clearInterval(retryTimer);
     };
   }, [clipStart, clipEnd, video.src]);
 
   return (
-    <div className="reel-slide reel-slide--clean group/reel">
+    <div
+      ref={slideRef}
+      className={`reel-slide reel-slide--clean group/reel${showOpenBtn ? " is-pressed" : ""}`}
+      onPointerEnter={revealOpenBtn}
+      onPointerLeave={() => hideOpenBtn(true)}
+      onPointerDown={revealOpenBtn}
+      onPointerUp={(e) => hideOpenBtn(e.pointerType === "mouse")}
+      onPointerCancel={() => hideOpenBtn(true)}
+    >
       <video
         ref={previewRef}
         src={video.src}
@@ -224,8 +309,9 @@ function ReelSlide({ video, onOpen }: { video: VideoItem; onOpen: () => void }) 
         muted
         playsInline
         autoPlay
-        preload="auto"
+        preload="metadata"
         disablePictureInPicture
+        disableRemotePlayback
       />
       <button
         type="button"
@@ -294,7 +380,7 @@ export default function VideoShowcase({
             Video <span className="text-purple-400">Reels</span>
           </h2>
           <p className="text-gray-500 text-sm mt-3 max-w-md mx-auto px-2">
-            Auto-playing clips · tap the expand button to watch full screen
+            Auto-playing clips · press a reel to open full screen
           </p>
         </motion.div>
       </div>
