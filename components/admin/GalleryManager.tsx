@@ -63,6 +63,7 @@ function GalleryDesignCard({
   dropHint,
   onAssignCategory,
   onHide,
+  onRemoveFromSection,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -78,6 +79,7 @@ function GalleryDesignCard({
   dropHint: "before" | "after" | null;
   onAssignCategory: (categoryId: string | null) => void;
   onHide: () => void;
+  onRemoveFromSection: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   onDragOver: (e: React.DragEvent) => void;
@@ -112,6 +114,19 @@ function GalleryDesignCard({
         className="admin-gallery-card__img"
         draggable={false}
       />
+      <button
+        type="button"
+        disabled={busy}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemoveFromSection();
+        }}
+        className="admin-gallery-card__remove"
+        title={currentCategoryId ? "Remove from this section" : "Remove from gallery"}
+        aria-label={currentCategoryId ? "Remove from this section" : "Remove from gallery"}
+      >
+        <X size={14} strokeWidth={2.5} />
+      </button>
       <div className="admin-gallery-card__bar">
         <span className="admin-gallery-card__grip" data-gallery-drag-handle aria-hidden>
           <GripVertical size={12} />
@@ -358,6 +373,31 @@ export default function GalleryManager({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function removeFromSection(
+    project: Project,
+    sectionCategoryId: string | null,
+    sectionName?: string
+  ) {
+    if (sectionCategoryId) {
+      setBusy(true);
+      setError("");
+      try {
+        await updateProject(project.id, {
+          category_id: null,
+          metadata: { ...project.metadata, showInGallery: true },
+        });
+        setMessage(`Removed from ${sectionName || "section"}.`);
+        await refetchAll();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to remove design");
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+    await hideFromGallery(project);
   }
 
   async function hideFromGallery(project: Project) {
@@ -740,6 +780,9 @@ export default function GalleryManager({
                       }
                     }}
                     onHide={() => hideFromGallery(project)}
+                    onRemoveFromSection={() =>
+                      removeFromSection(project, cat?.id ?? null, cat?.name ?? title)
+                    }
                     onDragStart={() =>
                       setDrag({ projectId: project.id, sectionId, index })
                     }
