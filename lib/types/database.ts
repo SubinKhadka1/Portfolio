@@ -12,6 +12,72 @@ export type DesignMetadata = {
   gallerySortOrder?: number;
 };
 
+/** Shared image metadata for gallery + homepage design modules. */
+export type DesignImageMetadata = {
+  color?: string;
+  aspectRatio?: "square" | "portrait";
+  imageWidth?: number;
+  imageHeight?: number;
+};
+
+/** Independent record for /designs gallery CMS (gallery_designs). */
+export type GalleryDesignMetadata = DesignImageMetadata & {
+  /** When true, design is kept in admin but hidden from the public gallery page. */
+  galleryHidden?: boolean;
+};
+
+export type GalleryDesign = {
+  id: string;
+  title: string;
+  description: string;
+  media_url: string;
+  category_id: string | null;
+  sort_order: number;
+  published: boolean;
+  metadata: GalleryDesignMetadata;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GalleryDesignInput = {
+  title?: string;
+  description?: string;
+  media_url: string;
+  category_id?: string | null;
+  published?: boolean;
+  sort_order?: number;
+  metadata?: GalleryDesignMetadata;
+};
+
+/** Independent record for homepage marquee CMS (portfolio_homepage_designs). */
+export type HomepageDesignMetadata = DesignImageMetadata & {
+  marqueeRow?: 1 | 2 | 3;
+};
+
+export type HomepageDesign = {
+  id: string;
+  title: string;
+  description: string;
+  media_url: string;
+  sort_order: number;
+  published: boolean;
+  metadata: HomepageDesignMetadata;
+  /** Set when copied from a gallery design via "Feature on Homepage". */
+  source_gallery_design_id?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type HomepageDesignInput = {
+  title?: string;
+  description?: string;
+  media_url: string;
+  published?: boolean;
+  sort_order?: number;
+  metadata?: HomepageDesignMetadata;
+  source_gallery_design_id?: string | null;
+};
+
 export type VideoMetadata = {
   duration?: string;
   clipStart?: number;

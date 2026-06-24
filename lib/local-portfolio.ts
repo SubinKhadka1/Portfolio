@@ -12,7 +12,9 @@ import {
   STATIC_DESIGNS,
   STATIC_VIDEOS,
 } from "@/lib/static-data";
-import type { Project, ProjectInput, ProjectType } from "@/lib/types/database";
+import type { GalleryDesign, HomepageDesign, Project, ProjectInput, ProjectType } from "@/lib/types/database";
+import { migrateSeparatedDesignModules } from "@/lib/design-module-mappers";
+import { normalizePortfolioStore, type PortfolioStore } from "@/lib/portfolio-store-types";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "portfolio.json");
@@ -111,7 +113,7 @@ function migrateDesignPlacement(designs: Project[]): { designs: Project[]; chang
   return { designs: migrated, changed };
 }
 
-type PortfolioStore = Record<ProjectType, Project[]>;
+export type { PortfolioStore } from "@/lib/portfolio-store-types";
 
 function typeKey(type: ProjectType): ProjectType {
   return type;
@@ -200,6 +202,11 @@ function migrateStore(store: PortfolioStore): PortfolioStore {
     changed = true;
   }
 
+  const moduleMigration = migrateSeparatedDesignModules(store);
+  if (moduleMigration.changed) {
+    changed = true;
+  }
+
   return store;
 }
 
@@ -211,43 +218,60 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function storeHasGalleryId(store: PortfolioStore, id: string) {
+  return store.gallery_designs.some((d) => d.id === id);
+}
+
+function storeHasHomepageId(store: PortfolioStore, id: string) {
+  return store.homepage_designs.some((d) => d.id === id);
+}
+
 function storeHasId(store: PortfolioStore, id: string) {
-  return (["design", "video", "client"] as ProjectType[]).some((type) =>
-    store[type].some((p) => p.id === id)
+  return (
+    storeHasGalleryId(store, id) ||
+    storeHasHomepageId(store, id) ||
+    (["design", "video", "client"] as ProjectType[]).some((type) =>
+      store[type].some((p) => p.id === id)
+    )
   );
 }
 
 async function loadPortfolioStore(): Promise<PortfolioStore> {
-  const fromBlob = await readJsonFile<PortfolioStore>(PORTFOLIO_JSON);
-  if (fromBlob) return migrateStore(fromBlob);
+  const fromBlob = await readJsonFile<Partial<PortfolioStore>>(PORTFOLIO_JSON);
+  if (fromBlob) return migrateStore(normalizePortfolioStore(fromBlob));
 
   if (isBlobStorageEnabled() && (await blobJsonExists(PORTFOLIO_JSON))) {
     throw new Error("Could not read live portfolio data. Please try again.");
   }
 
   if (isNextBuildPhase()) {
-    return {
-      design: staticProjectsForAdmin("design"),
-      video: staticProjectsForAdmin("video"),
-      client: staticProjectsForAdmin("client"),
-    };
+    const design = staticProjectsForAdmin("design");
+    return migrateStore(
+      normalizePortfolioStore({
+        design,
+        video: staticProjectsForAdmin("video"),
+        client: staticProjectsForAdmin("client"),
+      })
+    );
   }
 
   try {
-    const parsed = JSON.parse(await fs.readFile(DATA_FILE, "utf8")) as PortfolioStore;
-    return migrateStore(parsed);
+    const parsed = JSON.parse(await fs.readFile(DATA_FILE, "utf8")) as Partial<PortfolioStore>;
+    return migrateStore(normalizePortfolioStore(parsed));
   } catch {
-    const store: PortfolioStore = {
-      design: staticProjectsForAdmin("design").map((p) => ({
-        ...p,
-        id: randomUUID(),
-      })),
-      video: staticProjectsForAdmin("video").map((p) => ({
-        ...p,
-        id: randomUUID(),
-      })),
-      client: [],
-    };
+    const store = migrateStore(
+      normalizePortfolioStore({
+        design: staticProjectsForAdmin("design").map((p) => ({
+          ...p,
+          id: randomUUID(),
+        })),
+        video: staticProjectsForAdmin("video").map((p) => ({
+          ...p,
+          id: randomUUID(),
+        })),
+        client: [],
+      })
+    );
     if (!isNextBuildPhase()) {
       await writeJsonFile(PORTFOLIO_JSON, store);
     }
@@ -262,29 +286,47 @@ async function savePortfolioStore(store: PortfolioStore) {
 
 async function updatePortfolioStore(
   mutate: (store: PortfolioStore) => void | Promise<void>,
-  options?: { verifyId?: string; verifyIds?: string[] }
+  options?: {
+    verifyId?: string;
+    verifyIds?: string[];
+    verifyGalleryId?: string;
+    verifyGalleryIds?: string[];
+    verifyHomepageId?: string;
+    verifyHomepageIds?: string[];
+  }
 ): Promise<PortfolioStore> {
   let lastError: Error | null = null;
-  const idsToVerify =
-    options?.verifyIds?.length
-      ? options.verifyIds
-      : options?.verifyId
-        ? [options.verifyId]
-        : [];
-  const maxAttempts = idsToVerify.length > 0 && isBlobStorageEnabled() ? 8 : 4;
+  const idsToVerify = [
+    ...(options?.verifyIds ?? []),
+    ...(options?.verifyId ? [options.verifyId] : []),
+  ];
+  const galleryIds = [
+    ...(options?.verifyGalleryIds ?? []),
+    ...(options?.verifyGalleryId ? [options.verifyGalleryId] : []),
+  ];
+  const homepageIds = [
+    ...(options?.verifyHomepageIds ?? []),
+    ...(options?.verifyHomepageId ? [options.verifyHomepageId] : []),
+  ];
+  const needsVerify =
+    idsToVerify.length > 0 || galleryIds.length > 0 || homepageIds.length > 0;
+  const maxAttempts = needsVerify && isBlobStorageEnabled() ? 8 : 4;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const store = cloneStore(await loadPortfolioStore());
     await mutate(store);
     await savePortfolioStore(store);
 
-    if (idsToVerify.length === 0) return store;
+    if (!needsVerify) return store;
 
     const delayMs = isBlobStorageEnabled() ? 250 * (attempt + 1) : 120 * (attempt + 1);
     await sleep(delayMs);
     try {
       const check = await loadPortfolioStore();
-      if (idsToVerify.every((id) => storeHasId(check, id))) return store;
+      const projectOk = idsToVerify.every((id) => storeHasId(check, id));
+      const galleryOk = galleryIds.every((id) => storeHasGalleryId(check, id));
+      const homepageOk = homepageIds.every((id) => storeHasHomepageId(check, id));
+      if (projectOk && galleryOk && homepageOk) return store;
       lastError = new Error("New item did not persist. Retrying save...");
     } catch (err) {
       lastError = err instanceof Error ? err : new Error("Save verification failed");
@@ -293,6 +335,8 @@ async function updatePortfolioStore(
 
   throw lastError ?? new Error("Failed to save portfolio after multiple attempts");
 }
+
+export { updatePortfolioStore };
 
 async function ensureStore(): Promise<PortfolioStore> {
   const store = await loadPortfolioStore();
@@ -312,6 +356,10 @@ async function ensureStore(): Promise<PortfolioStore> {
   }
 
   return store;
+}
+
+export async function ensurePortfolioStore(): Promise<PortfolioStore> {
+  return ensureStore();
 }
 
 export async function getLocalProjects(type: ProjectType): Promise<Project[]> {

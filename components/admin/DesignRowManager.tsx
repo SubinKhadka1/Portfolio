@@ -19,7 +19,7 @@ import {
   clampMarqueeRows,
   groupProjectsByMarqueeRow,
 } from "@/lib/marquee";
-import { buildHomepageReorderItems } from "@/lib/reorder-payload";
+import { buildHomepageDesignReorderItems } from "@/lib/reorder-payload";
 import { homepageSortValue } from "@/lib/design-placement";
 import { parseResponseJson } from "@/lib/parse-response";
 import type { Project } from "@/lib/types/database";
@@ -196,7 +196,7 @@ export default function DesignRowManager({
   }, [initial, busy]);
 
   async function refetchProjects() {
-    const res = await fetch("/api/projects?type=design&admin=true", {
+    const res = await fetch("/api/homepage-designs?admin=true", {
       cache: "no-store",
     });
     const data = await parseResponseJson<Project[] | { error?: string }>(res);
@@ -205,8 +205,12 @@ export default function DesignRowManager({
         !Array.isArray(data) && data.error ? data.error : "Failed to refresh designs"
       );
     }
-    setProjects(data);
-    return data;
+    const { homepageDesignToProjectShape } = await import("@/lib/design-module-mappers");
+    const shaped = (data as import("@/lib/types/database").HomepageDesign[]).map(
+      homepageDesignToProjectShape
+    );
+    setProjects(shaped);
+    return shaped;
   }
 
   const rowGroups = useMemo(
@@ -214,11 +218,25 @@ export default function DesignRowManager({
     [projects, rowCount]
   );
 
-  async function persistReorder(items: ReturnType<typeof buildHomepageReorderItems>) {
-    const res = await fetch("/api/projects/reorder", {
+  async function persistReorder(rowProjects: Project[], row: number) {
+    const items = buildHomepageDesignReorderItems(
+      rowProjects.map((p) => ({
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        media_url: p.media_url,
+        sort_order: p.metadata?.homepageSortOrder ?? p.sort_order,
+        published: p.published,
+        metadata: p.metadata,
+        created_at: p.created_at,
+        updated_at: p.updated_at,
+      })),
+      row
+    );
+    const res = await fetch("/api/homepage-designs/reorder", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items, scope: "homepage" }),
+      body: JSON.stringify({ items }),
       cache: "no-store",
     });
     const data = await parseResponseJson<{ error?: string }>(res);
@@ -230,23 +248,25 @@ export default function DesignRowManager({
   }
 
   async function persistRowOrder(row: number, rowProjects: Project[]) {
-    await persistReorder(buildHomepageReorderItems(rowProjects, row));
+    await persistReorder(rowProjects, row);
   }
 
   async function updateProject(
     id: string,
     patch: { published?: boolean; metadata?: Project["metadata"] }
   ) {
-    const res = await fetch(`/api/projects/${id}`, {
+    const res = await fetch(`/api/homepage-designs/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
     if (!res.ok) return null;
-    const updated = (await res.json()) as Project;
-    setProjects((prev) => prev.map((p) => (p.id === id ? updated : p)));
+    const updated = (await res.json()) as import("@/lib/types/database").HomepageDesign;
+    const { homepageDesignToProjectShape } = await import("@/lib/design-module-mappers");
+    const shaped = homepageDesignToProjectShape(updated);
+    setProjects((prev) => prev.map((p) => (p.id === id ? shaped : p)));
     router.refresh();
-    return updated;
+    return shaped;
   }
 
   async function togglePublished(id: string, published: boolean) {
@@ -254,8 +274,14 @@ export default function DesignRowManager({
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this design?")) return;
-    const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+    if (
+      !confirm(
+        "Delete this design from the homepage showcase only? The /designs gallery will not be affected."
+      )
+    ) {
+      return;
+    }
+    const res = await fetch(`/api/homepage-designs/${id}`, { method: "DELETE" });
     if (res.ok) {
       setProjects((prev) => prev.filter((p) => p.id !== id));
       router.refresh();
@@ -312,10 +338,8 @@ export default function DesignRowManager({
         const normalizedTarget = normalizeRowProjects(targetProjects, targetRowNum);
         applyRowState([...normalizedSource, ...normalizedTarget]);
 
-        await persistReorder([
-          ...buildHomepageReorderItems(normalizedSource, sourceRow + 1),
-          ...buildHomepageReorderItems(normalizedTarget, targetRowNum),
-        ]);
+        await persistReorder(normalizedSource, sourceRow + 1);
+        await persistReorder(normalizedTarget, targetRowNum);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -347,10 +371,8 @@ export default function DesignRowManager({
       const normalizedTarget = normalizeRowProjects(targetProjects, targetRow);
       applyRowState([...normalizedSource, ...normalizedTarget]);
 
-      await persistReorder([
-        ...buildHomepageReorderItems(normalizedSource, currentRow),
-        ...buildHomepageReorderItems(normalizedTarget, targetRow),
-      ]);
+      await persistReorder(normalizedSource, currentRow);
+      await persistReorder(normalizedTarget, targetRow);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
       try {
@@ -366,14 +388,16 @@ export default function DesignRowManager({
   async function removeFromHomepage(project: Project) {
     if (
       !confirm(
-        `Remove "${project.title || "this design"}" from the homepage showcase only? It will stay on the /designs gallery page.`
+        `Remove "${project.title || "this design"}" from the homepage showcase only? The /designs gallery page will not be affected.`
       )
     ) {
       return;
     }
-    await updateProject(project.id, {
-      metadata: { ...project.metadata, showOnHomepage: false },
-    });
+    const res = await fetch(`/api/homepage-designs/${project.id}`, { method: "DELETE" });
+    if (res.ok) {
+      setProjects((prev) => prev.filter((p) => p.id !== project.id));
+      router.refresh();
+    }
   }
 
   return (

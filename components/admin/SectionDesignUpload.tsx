@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Upload, XCircle } from "lucide-react";
 import { uploadDesignsToSection } from "@/lib/gallery-design-create";
-import type { Project } from "@/lib/types/database";
+import type { GalleryDesign } from "@/lib/types/database";
 
 const ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/jpg,.jpg,.jpeg,.png,.webp,.gif";
 
@@ -23,7 +23,7 @@ export default function SectionDesignUpload({
   categoryName: string;
   startSortOrder: number;
   disabled?: boolean;
-  onComplete: (result: { created: Project[]; failed: { name: string; error: string }[] }) => void;
+  onComplete: (result: { created: GalleryDesign[]; failed: { name: string; error: string }[] }) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);

@@ -1,6 +1,16 @@
 import { tryCreateClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getLocalDashboardStats, getLocalProjects } from "@/lib/local-portfolio";
+import {
+  galleryDesignToDesignItem,
+  homepageDesignToDesignItem,
+  homepageDesignToProjectShape,
+} from "@/lib/design-module-mappers";
+import {
+  filterVisibleGalleryDesigns,
+  getLocalGalleryDesigns,
+  getLocalHomepageDesigns,
+} from "@/lib/design-modules-store";
 import { getCategories } from "@/lib/categories";
 import { groupDesignsByCategory } from "@/lib/design-gallery";
 import {
@@ -135,13 +145,72 @@ export async function getProjects(
 }
 
 export async function getDesigns(): Promise<DesignItem[]> {
-  const [projects, categories] = await Promise.all([getProjects("design"), getCategories("design")]);
+  if (!isSupabaseConfigured()) {
+    const designs = await getLocalHomepageDesigns();
+    return designs.map(homepageDesignToDesignItem);
+  }
+
+  const supabase = await tryCreateClient();
+  if (!supabase) {
+    const designs = await getLocalHomepageDesigns();
+    return designs.map(homepageDesignToDesignItem);
+  }
+
+  const [projects, categories] = await Promise.all([
+    getProjects("design"),
+    getCategories("design"),
+  ]);
   const byId = new Map(categories.map((c) => [c.id, c]));
-  return filterHomepageProjects(projects)
-    .map((p) => projectToDesign(p, p.category_id ? byId.get(p.category_id) : null));
+  return filterHomepageProjects(projects).map((p) =>
+    projectToDesign(p, p.category_id ? byId.get(p.category_id) : null)
+  );
+}
+
+export async function getHomepageDesignProjects(options?: {
+  admin?: boolean;
+}): Promise<Project[]> {
+  const designs = await getLocalHomepageDesigns(options);
+  return designs.map(homepageDesignToProjectShape);
 }
 
 export async function getDesignGalleryPageData() {
+  if (!isSupabaseConfigured()) {
+    const [designs, categories, settings] = await Promise.all([
+      getLocalGalleryDesigns(),
+      getCategories("design"),
+      getSiteSettings(),
+    ]);
+    const visible = filterVisibleGalleryDesigns(designs);
+    const byId = new Map(categories.map((c) => [c.id, c]));
+    const items = visible.map((d) =>
+      galleryDesignToDesignItem(d, d.category_id ? byId.get(d.category_id) : null)
+    );
+    return {
+      sections: groupDesignsByCategory(items, categories),
+      settings,
+      totalDesigns: items.length,
+    };
+  }
+
+  const supabase = await tryCreateClient();
+  if (!supabase) {
+    const [designs, categories, settings] = await Promise.all([
+      getLocalGalleryDesigns(),
+      getCategories("design"),
+      getSiteSettings(),
+    ]);
+    const visible = filterVisibleGalleryDesigns(designs);
+    const byId = new Map(categories.map((c) => [c.id, c]));
+    const items = visible.map((d) =>
+      galleryDesignToDesignItem(d, d.category_id ? byId.get(d.category_id) : null)
+    );
+    return {
+      sections: groupDesignsByCategory(items, categories),
+      settings,
+      totalDesigns: items.length,
+    };
+  }
+
   const [projects, categories, settings] = await Promise.all([
     getProjects("design"),
     getCategories("design"),

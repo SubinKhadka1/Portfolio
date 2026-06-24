@@ -1,14 +1,14 @@
 import GalleryManager from "@/components/admin/GalleryManager";
 import { getCategories } from "@/lib/categories";
-import { getProjects } from "@/lib/projects";
+import { getLocalGalleryDesigns } from "@/lib/design-modules-store";
 import { getSiteSettings } from "@/lib/site-settings-read";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminGalleryPage() {
-  const [categories, projects, settings] = await Promise.all([
+  const [categories, designs, settings] = await Promise.all([
     getCategories("design"),
-    getProjects("design", { admin: true }),
+    getLocalGalleryDesigns({ admin: true }),
     getSiteSettings(),
   ]);
 
@@ -23,7 +23,7 @@ export default async function AdminGalleryPage() {
       </div>
       <GalleryManager
         initialCategories={categories}
-        initialProjects={projects}
+        initialDesigns={designs}
         gallerySettings={{
           designGalleryEyebrow: settings.designGalleryEyebrow,
           designGalleryTitle: settings.designGalleryTitle,

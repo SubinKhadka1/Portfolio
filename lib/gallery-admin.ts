@@ -1,43 +1,41 @@
-import { getGallerySortOrder, showsInGallery } from "@/lib/design-placement";
+import { showsGalleryDesign } from "@/lib/design-module-mappers";
 import { designDisplayAspectRatio } from "@/lib/design-image";
-import type { Category, Project } from "@/lib/types/database";
+import type { Category, GalleryDesign } from "@/lib/types/database";
 
 export type GalleryAdminSection = {
   category: Category;
-  designs: Project[];
+  designs: GalleryDesign[];
 };
 
-export function sortGalleryProjects(projects: Project[]) {
-  return [...projects].sort((a, b) => getGallerySortOrder(a) - getGallerySortOrder(b));
+export function sortGalleryDesigns(designs: GalleryDesign[]) {
+  return [...designs].sort((a, b) => a.sort_order - b.sort_order);
 }
 
-export function groupProjectsForGalleryAdmin(
-  projects: Project[],
+export function groupDesignsForGalleryAdmin(
+  designs: GalleryDesign[],
   categories: Category[]
-): { sections: GalleryAdminSection[]; unassigned: Project[]; hidden: Project[] } {
+): { sections: GalleryAdminSection[]; unassigned: GalleryDesign[]; hidden: GalleryDesign[] } {
   const sortedCategories = [...categories].sort(
     (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)
   );
 
-  const visible = projects.filter((p) => showsInGallery(p.metadata));
-  const hidden = projects.filter((p) => !showsInGallery(p.metadata));
+  const visible = designs.filter(showsGalleryDesign);
+  const hidden = designs.filter((d) => !showsGalleryDesign(d));
 
   const sections = sortedCategories.map((category) => ({
     category,
-    designs: sortGalleryProjects(
-      visible.filter((p) => p.category_id === category.id)
-    ),
+    designs: sortGalleryDesigns(visible.filter((d) => d.category_id === category.id)),
   }));
 
-  const unassigned = sortGalleryProjects(
+  const unassigned = sortGalleryDesigns(
     visible.filter(
-      (p) => !p.category_id || !sortedCategories.some((c) => c.id === p.category_id)
+      (d) => !d.category_id || !sortedCategories.some((c) => c.id === d.category_id)
     )
   );
 
   return { sections, unassigned, hidden };
 }
 
-export function projectGalleryAspect(project: Project) {
-  return designDisplayAspectRatio(project.metadata ?? {});
+export function galleryDesignAspect(design: GalleryDesign) {
+  return designDisplayAspectRatio(design.metadata ?? {});
 }

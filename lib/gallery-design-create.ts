@@ -1,7 +1,7 @@
 import { prepareDesignUpload } from "@/lib/compress-design-image";
 import { detectDesignDimensionsFromUrl } from "@/lib/design-image";
 import { parseResponseJson } from "@/lib/parse-response";
-import type { Project, ProjectInput } from "@/lib/types/database";
+import type { GalleryDesign, GalleryDesignInput } from "@/lib/types/database";
 
 export function titleFromMediaUrl(url: string) {
   const raw = url.split("/").pop()?.replace(/\.[^.]+$/, "") || "Untitled";
@@ -27,34 +27,28 @@ export async function uploadDesignFile(file: File): Promise<string> {
 function buildGalleryDesignPayload({
   mediaUrl,
   categoryId,
-  gallerySortOrder,
-  showOnHomepage = false,
+  sortOrder,
   title,
   detected,
 }: {
   mediaUrl: string;
   categoryId: string;
-  gallerySortOrder: number;
-  showOnHomepage?: boolean;
+  sortOrder: number;
   title?: string;
   detected: Awaited<ReturnType<typeof detectDesignDimensionsFromUrl>>;
-}): ProjectInput {
+}): GalleryDesignInput {
   return {
-    type: "design",
     title: title?.trim() || titleFromMediaUrl(mediaUrl),
     description: "",
     media_url: mediaUrl,
     category_id: categoryId,
-    featured: false,
     published: true,
+    sort_order: sortOrder,
     metadata: {
       color: "from-purple-700 to-indigo-900",
       aspectRatio: detected.aspectRatio,
       imageWidth: detected.width,
       imageHeight: detected.height,
-      showOnHomepage,
-      showInGallery: true,
-      gallerySortOrder,
     },
   };
 }
@@ -62,32 +56,29 @@ function buildGalleryDesignPayload({
 export async function createGalleryDesign({
   mediaUrl,
   categoryId,
-  gallerySortOrder,
-  showOnHomepage = false,
+  sortOrder,
   title,
 }: {
   mediaUrl: string;
   categoryId: string;
-  gallerySortOrder: number;
-  showOnHomepage?: boolean;
+  sortOrder: number;
   title?: string;
-}): Promise<Project> {
+}): Promise<GalleryDesign> {
   const detected = await detectDesignDimensionsFromUrl(mediaUrl);
   const payload = buildGalleryDesignPayload({
     mediaUrl,
     categoryId,
-    gallerySortOrder,
-    showOnHomepage,
+    sortOrder,
     title,
     detected,
   });
 
-  const res = await fetch("/api/projects", {
+  const res = await fetch("/api/gallery-designs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  const data = await parseResponseJson<Project & { error?: string }>(res);
+  const data = await parseResponseJson<GalleryDesign & { error?: string }>(res);
   if (!res.ok || !data.id) {
     throw new Error(data.error || "Failed to create design");
   }
@@ -98,15 +89,15 @@ export async function createGalleryDesign({
 }
 
 async function createGalleryDesignsBatch(
-  items: ProjectInput[],
+  items: GalleryDesignInput[],
   categoryId: string
-): Promise<Project[]> {
-  const res = await fetch("/api/projects/batch", {
+): Promise<GalleryDesign[]> {
+  const res = await fetch("/api/gallery-designs/batch", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ items }),
   });
-  const data = await parseResponseJson<Project[] | { error?: string }>(res);
+  const data = await parseResponseJson<GalleryDesign[] | { error?: string }>(res);
   if (!res.ok || !Array.isArray(data)) {
     throw new Error(!Array.isArray(data) && data.error ? data.error : "Failed to save designs");
   }
@@ -118,7 +109,7 @@ async function createGalleryDesignsBatch(
 }
 
 export type SectionUploadResult = {
-  created: Project[];
+  created: GalleryDesign[];
   failed: { name: string; error: string }[];
 };
 
@@ -157,7 +148,7 @@ export async function uploadDesignsToSection({
 
   onProgress?.(`Preparing ${uploaded.length} design${uploaded.length === 1 ? "" : "s"}…`);
 
-  const payloads: { file: File; payload: ProjectInput }[] = [];
+  const payloads: { file: File; payload: GalleryDesignInput }[] = [];
   for (let i = 0; i < uploaded.length; i++) {
     const { file, url } = uploaded[i];
     try {
@@ -167,8 +158,7 @@ export async function uploadDesignsToSection({
         payload: buildGalleryDesignPayload({
           mediaUrl: url,
           categoryId,
-          gallerySortOrder: startSortOrder + i * 1_000,
-          showOnHomepage: false,
+          sortOrder: startSortOrder + i * 1_000,
           detected,
         }),
       });

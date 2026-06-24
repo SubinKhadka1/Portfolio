@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Save, Trash2 } from "lucide-react";
 import UploadZone from "@/components/admin/UploadZone";
-import type { Category, Project, ProjectInput, ProjectType } from "@/lib/types/database";
+import type { Category, HomepageDesignInput, Project, ProjectInput, ProjectType } from "@/lib/types/database";
 import { clampMarqueeRow } from "@/lib/marquee";
 import { detectDesignAspectRatioFromUrl, detectDesignDimensionsFromUrl, formatLabel } from "@/lib/design-image";
 import { parseResponseJson } from "@/lib/parse-response";
@@ -73,8 +73,6 @@ export default function ProjectForm({
   const [duration, setDuration] = useState(initial?.metadata?.duration || "0:30");
   const [clipStart, setClipStart] = useState(initial?.metadata?.clipStart ?? 0);
   const [clipEnd, setClipEnd] = useState(initial?.metadata?.clipEnd ?? 8);
-  const [showOnHomepage, setShowOnHomepage] = useState(initial?.metadata?.showOnHomepage ?? true);
-  const [showInGallery, setShowInGallery] = useState(initial?.metadata?.showInGallery ?? true);
   const [className, setClassName] = useState(initial?.metadata?.className || "");
   const [containerClass, setContainerClass] = useState(initial?.metadata?.containerClass || "");
 
@@ -98,8 +96,6 @@ export default function ProjectForm({
       metadata.color = color;
       metadata.aspectRatio = aspectRatio;
       metadata.marqueeRow = clampMarqueeRow(marqueeRow, portfolioRows);
-      metadata.showOnHomepage = showOnHomepage;
-      metadata.showInGallery = showInGallery;
     }
     if (type === "video") {
       metadata.duration = duration;
@@ -129,7 +125,7 @@ export default function ProjectForm({
     };
   }
 
-  async function buildDesignPayload(media_url: string) {
+  async function buildHomepageDesignPayload(media_url: string): Promise<HomepageDesignInput> {
     let resolvedAspect = aspectRatio;
     let imageWidth = initial?.metadata?.imageWidth;
     let imageHeight = initial?.metadata?.imageHeight;
@@ -141,37 +137,43 @@ export default function ProjectForm({
       imageHeight = detected.height;
     }
 
-    const metadata: ProjectInput["metadata"] = {
-      color,
-      aspectRatio: resolvedAspect,
-      imageWidth,
-      imageHeight,
-      marqueeRow: clampMarqueeRow(marqueeRow, portfolioRows),
-      showOnHomepage,
-      showInGallery,
-    };
     return {
-      type,
       title:
         mediaUrls.length > 1
           ? titleFromMediaUrl(media_url)
           : title.trim() || titleFromMediaUrl(media_url),
       description,
       media_url,
-      category_id: categoryId || null,
-      featured,
       published,
-      metadata,
-    } satisfies ProjectInput;
+      metadata: {
+        color,
+        aspectRatio: resolvedAspect,
+        imageWidth,
+        imageHeight,
+        marqueeRow: clampMarqueeRow(marqueeRow, portfolioRows),
+      },
+    };
   }
 
-  async function saveProject(payload: ProjectInput) {
-    const url = isEdit ? `/api/projects/${initial!.id}` : "/api/projects";
+  async function buildDesignPayload(media_url: string) {
+    return buildHomepageDesignPayload(media_url);
+  }
+
+  async function saveProject(payload: ProjectInput | HomepageDesignInput) {
+    const isHomepageDesign = type === "design";
+    const url = isHomepageDesign
+      ? isEdit
+        ? `/api/homepage-designs/${initial!.id}`
+        : "/api/homepage-designs"
+      : isEdit
+        ? `/api/projects/${initial!.id}`
+        : "/api/projects";
     const method = isEdit ? "PUT" : "POST";
+    const body = isHomepageDesign ? payload : { ...(payload as ProjectInput), type };
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     });
     const data = await parseResponseJson<Project & { error?: string }>(res);
     if (!res.ok) throw new Error(data.error || "Failed to save");
@@ -223,11 +225,24 @@ export default function ProjectForm({
   }
 
   async function handleDelete() {
-    if (!initial || !confirm("Delete this project permanently?")) return;
+    if (
+      !initial ||
+      !confirm(
+        type === "design"
+          ? "Delete this design from the homepage showcase only? The /designs gallery will not be affected."
+          : "Delete this project permanently?"
+      )
+    ) {
+      return;
+    }
 
     setDeleting(true);
     try {
-      const res = await fetch(`/api/projects/${initial.id}`, { method: "DELETE" });
+      const url =
+        type === "design"
+          ? `/api/homepage-designs/${initial.id}`
+          : `/api/projects/${initial.id}`;
+      const res = await fetch(url, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
       router.push(`/admin/projects?type=${type}`);
       router.refresh();
@@ -327,48 +342,27 @@ export default function ProjectForm({
         )}
       </div>
 
-      <div>
-        <label className="block text-zinc-400 text-xs font-medium mb-2">Category</label>
-        <select
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-          className="admin-input"
-        >
-          <option value="">No category</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-        <p className="text-zinc-600 text-xs mt-1">Used on the /designs gallery page only.</p>
-      </div>
+      {type !== "design" && (
+        <div>
+          <label className="block text-zinc-400 text-xs font-medium mb-2">Category</label>
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="admin-input"
+          >
+            <option value="">No category</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {type === "design" && (
-        <div className="grid sm:grid-cols-2 gap-3">
-          <label className="flex items-start gap-2.5 p-3 rounded-lg border border-zinc-800 bg-zinc-950/50 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showOnHomepage}
-              onChange={(e) => setShowOnHomepage(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>
-              <span className="block text-sm text-white font-medium">Homepage marquee</span>
-              <span className="block text-xs text-zinc-500 mt-0.5">Show in the scrolling showcase on the main site.</span>
-            </span>
-          </label>
-          <label className="flex items-start gap-2.5 p-3 rounded-lg border border-zinc-800 bg-zinc-950/50 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showInGallery}
-              onChange={(e) => setShowInGallery(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>
-              <span className="block text-sm text-white font-medium">Design gallery page</span>
-              <span className="block text-xs text-zinc-500 mt-0.5">Show on /designs under the selected category.</span>
-            </span>
-          </label>
-        </div>
+        <p className="text-zinc-500 text-sm bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
+          This adds to the <strong className="text-zinc-300">homepage marquee only</strong>. Manage the
+          /designs gallery separately in Design Gallery Editor.
+        </p>
       )}
 
       {type === "design" && (

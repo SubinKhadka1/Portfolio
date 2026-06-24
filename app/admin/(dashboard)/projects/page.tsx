@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 import DesignRowManager from "@/components/admin/DesignRowManager";
 import ClientRowManager from "@/components/admin/ClientRowManager";
 import ProjectGrid from "@/components/admin/ProjectGrid";
-import { getProjects } from "@/lib/projects";
+import { getProjects, getHomepageDesignProjects } from "@/lib/projects";
 import { getSiteSettings } from "@/lib/site-settings-read";
 import type { ProjectType } from "@/lib/types/database";
 
@@ -15,7 +15,9 @@ export default async function AdminProjectsPage({ searchParams }: PageProps) {
   const { type: typeParam } = await searchParams;
   const type = (typeParam as ProjectType) || "design";
   const [projects, settings] = await Promise.all([
-    getProjects(type, { admin: true }),
+    type === "design"
+      ? getHomepageDesignProjects({ admin: true })
+      : getProjects(type, { admin: true }),
     getSiteSettings(),
   ]);
 

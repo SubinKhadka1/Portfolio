@@ -14,16 +14,17 @@ import {
   Plus,
   Save,
   Settings,
+  Star,
   Trash2,
   X,
 } from "lucide-react";
 import DesignGalleryJustifiedGrid from "@/components/DesignGalleryJustifiedGrid";
 import SectionDesignUpload from "@/components/admin/SectionDesignUpload";
-import { buildGalleryReorderItems } from "@/lib/reorder-payload";
-import { groupProjectsForGalleryAdmin } from "@/lib/gallery-admin";
+import { buildGalleryDesignReorderItems } from "@/lib/reorder-payload";
+import { groupDesignsForGalleryAdmin } from "@/lib/gallery-admin";
 import { galleryWidthOverHeight } from "@/lib/design-gallery-layout";
 import { parseResponseJson } from "@/lib/parse-response";
-import type { Category, Project } from "@/lib/types/database";
+import type { Category, GalleryDesign } from "@/lib/types/database";
 import type { SiteSettings } from "@/lib/site-settings-read";
 
 function reorderList<T>(items: T[], from: number, to: number) {
@@ -33,11 +34,8 @@ function reorderList<T>(items: T[], from: number, to: number) {
   return next;
 }
 
-function nextGallerySortOrder(designs: Project[]) {
-  const max = designs.reduce(
-    (highest, design) => Math.max(highest, design.metadata?.gallerySortOrder ?? 0),
-    0
-  );
+function nextGallerySortOrder(designs: GalleryDesign[]) {
+  const max = designs.reduce((highest, design) => Math.max(highest, design.sort_order), 0);
   return max + 1_000;
 }
 
@@ -54,7 +52,7 @@ type DragOverTarget = {
 };
 
 function GalleryDesignCard({
-  project,
+  design,
   busy,
   height,
   categories,
@@ -64,13 +62,15 @@ function GalleryDesignCard({
   onAssignCategory,
   onHide,
   onRemoveFromSection,
+  onFeatureHomepage,
+  onDelete,
   onDragStart,
   onDragEnd,
   onDragOver,
   onDragLeave,
   onDrop,
 }: {
-  project: Project;
+  design: GalleryDesign;
   busy: boolean;
   height: number;
   categories: Category[];
@@ -80,6 +80,8 @@ function GalleryDesignCard({
   onAssignCategory: (categoryId: string | null) => void;
   onHide: () => void;
   onRemoveFromSection: () => void;
+  onFeatureHomepage: () => void;
+  onDelete: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   onDragOver: (e: React.DragEvent) => void;
@@ -95,7 +97,7 @@ function GalleryDesignCard({
           return;
         }
         e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", project.id);
+        e.dataTransfer.setData("text/plain", design.id);
         onDragStart();
       }}
       onDragEnd={onDragEnd}
@@ -109,8 +111,8 @@ function GalleryDesignCard({
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={project.media_url}
-        alt={project.title}
+        src={design.media_url}
+        alt={design.title}
         className="admin-gallery-card__img"
         draggable={false}
       />
@@ -131,16 +133,25 @@ function GalleryDesignCard({
         <span className="admin-gallery-card__grip" data-gallery-drag-handle aria-hidden>
           <GripVertical size={12} />
         </span>
-        <p className="admin-gallery-card__title">{project.title || "Untitled"}</p>
+        <p className="admin-gallery-card__title">{design.title || "Untitled"}</p>
       </div>
       <div className="admin-gallery-card__actions">
         <Link
-          href={`/admin/projects/${project.id}`}
+          href={`/admin/gallery-designs/${design.id}`}
           className="admin-gallery-card__btn"
           title="Edit design"
         >
           <Pencil size={13} />
         </Link>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onFeatureHomepage}
+          className="admin-gallery-card__btn"
+          title="Feature on Homepage (creates independent copy)"
+        >
+          <Star size={13} />
+        </button>
         <select
           value={currentCategoryId || ""}
           disabled={busy}
@@ -164,6 +175,15 @@ function GalleryDesignCard({
         >
           <EyeOff size={13} />
         </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onDelete}
+          className="admin-gallery-card__btn admin-gallery-card__btn--muted"
+          title="Delete from gallery only"
+        >
+          <Trash2 size={13} />
+        </button>
       </div>
     </article>
   );
@@ -171,11 +191,11 @@ function GalleryDesignCard({
 
 export default function GalleryManager({
   initialCategories,
-  initialProjects,
+  initialDesigns,
   gallerySettings,
 }: {
   initialCategories: Category[];
-  initialProjects: Project[];
+  initialDesigns: GalleryDesign[];
   gallerySettings: Pick<
     SiteSettings,
     "designGalleryEyebrow" | "designGalleryTitle" | "designGallerySubtitle"
@@ -183,7 +203,7 @@ export default function GalleryManager({
 }) {
   const router = useRouter();
   const [categories, setCategories] = useState(initialCategories);
-  const [projects, setProjects] = useState(initialProjects);
+  const [designs, setDesigns] = useState(initialDesigns);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -194,52 +214,99 @@ export default function GalleryManager({
   const [dragOver, setDragOver] = useState<DragOverTarget | null>(null);
 
   const grouped = useMemo(
-    () => groupProjectsForGalleryAdmin(projects, categories),
-    [projects, categories]
+    () => groupDesignsForGalleryAdmin(designs, categories),
+    [designs, categories]
   );
 
   async function refetchAll() {
-    const [catRes, projRes] = await Promise.all([
+    const [catRes, designRes] = await Promise.all([
       fetch("/api/categories?type=design", { cache: "no-store" }),
-      fetch("/api/projects?type=design&admin=true", { cache: "no-store" }),
+      fetch("/api/gallery-designs?admin=true", { cache: "no-store" }),
     ]);
     const cats = await parseResponseJson<Category[]>(catRes);
-    const projs = await parseResponseJson<Project[]>(projRes);
+    const list = await parseResponseJson<GalleryDesign[]>(designRes);
     if (Array.isArray(cats)) setCategories(cats);
-    if (Array.isArray(projs)) setProjects(projs);
+    if (Array.isArray(list)) setDesigns(list);
     router.refresh();
   }
 
-  async function updateProject(id: string, patch: Record<string, unknown>) {
-    const res = await fetch(`/api/projects/${id}`, {
+  async function updateDesign(id: string, patch: Record<string, unknown>) {
+    const res = await fetch(`/api/gallery-designs/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
-    const data = await parseResponseJson<Project | { error?: string }>(res);
+    const data = await parseResponseJson<GalleryDesign | { error?: string }>(res);
     if (!res.ok) {
-      throw new Error(!("id" in (data as Project)) && (data as { error?: string }).error
+      throw new Error(!("id" in (data as GalleryDesign)) && (data as { error?: string }).error
         ? (data as { error?: string }).error!
         : "Failed to update design");
     }
-    const updated = data as Project;
-    setProjects((prev) => prev.map((p) => (p.id === id ? updated : p)));
+    const updated = data as GalleryDesign;
+    setDesigns((prev) => prev.map((d) => (d.id === id ? updated : d)));
     return updated;
   }
 
-  async function persistGalleryOrder(sectionProjects: Project[]) {
-    const res = await fetch("/api/projects/reorder", {
+  async function persistGalleryOrder(sectionDesigns: GalleryDesign[]) {
+    const res = await fetch("/api/gallery-designs/reorder", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        scope: "gallery",
-        items: buildGalleryReorderItems(sectionProjects),
+        items: buildGalleryDesignReorderItems(sectionDesigns),
       }),
       cache: "no-store",
     });
     const data = await parseResponseJson<{ error?: string }>(res);
     if (!res.ok) throw new Error(data.error || "Failed to save gallery order");
     await refetchAll();
+  }
+
+  async function deleteFromGallery(design: GalleryDesign) {
+    if (
+      !confirm(
+        "This will remove the design from the Gallery only.\nHomepage portfolio sections will remain unchanged."
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/gallery-designs/${design.id}`, { method: "DELETE" });
+      const data = await parseResponseJson<{ error?: string }>(res);
+      if (!res.ok) throw new Error(data.error || "Failed to delete design");
+      setDesigns((prev) => prev.filter((d) => d.id !== design.id));
+      setMessage("Design removed from gallery. Homepage content unchanged.");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete design");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function featureOnHomepage(design: GalleryDesign) {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/homepage-designs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from_gallery_id: design.id }),
+      });
+      const data = await parseResponseJson<{ id?: string; error?: string }>(res);
+      if (!res.ok || !data.id) {
+        throw new Error(data.error || "Failed to feature on homepage");
+      }
+      setMessage(
+        `"${design.title || "Design"}" copied to homepage marquee. Gallery and homepage stay independent.`
+      );
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to feature on homepage");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function saveCategory(category: Category) {
@@ -336,13 +403,13 @@ export default function GalleryManager({
     }
   }
 
-  async function moveToUnassigned(project: Project) {
+  async function moveToUnassigned(design: GalleryDesign) {
     setBusy(true);
     setError("");
     try {
-      await updateProject(project.id, {
+      await updateDesign(design.id, {
         category_id: null,
-        metadata: { ...project.metadata, showInGallery: true },
+        metadata: { ...design.metadata, galleryHidden: false },
       });
       setMessage("Moved to Unassigned.");
       await refetchAll();
@@ -353,15 +420,15 @@ export default function GalleryManager({
     }
   }
 
-  async function assignToSection(project: Project, categoryId: string) {
-    if (project.category_id === categoryId) return;
+  async function assignToSection(design: GalleryDesign, categoryId: string) {
+    if (design.category_id === categoryId) return;
 
     setBusy(true);
     setError("");
     try {
-      const updated = await updateProject(project.id, {
+      const updated = await updateDesign(design.id, {
         category_id: categoryId,
-        metadata: { ...project.metadata, showInGallery: true, showOnHomepage: false },
+        metadata: { ...design.metadata, galleryHidden: false },
       });
       if (updated.category_id !== categoryId) {
         throw new Error("Section assignment did not save. Please try again.");
@@ -376,7 +443,7 @@ export default function GalleryManager({
   }
 
   async function removeFromSection(
-    project: Project,
+    design: GalleryDesign,
     sectionCategoryId: string | null,
     sectionName?: string
   ) {
@@ -384,9 +451,9 @@ export default function GalleryManager({
       setBusy(true);
       setError("");
       try {
-        await updateProject(project.id, {
+        await updateDesign(design.id, {
           category_id: null,
-          metadata: { ...project.metadata, showInGallery: true },
+          metadata: { ...design.metadata, galleryHidden: false },
         });
         setMessage(`Removed from ${sectionName || "section"}.`);
         await refetchAll();
@@ -397,15 +464,15 @@ export default function GalleryManager({
       }
       return;
     }
-    await hideFromGallery(project);
+    await hideFromGallery(design);
   }
 
-  async function hideFromGallery(project: Project) {
+  async function hideFromGallery(design: GalleryDesign) {
     setBusy(true);
     setError("");
     try {
-      await updateProject(project.id, {
-        metadata: { ...project.metadata, showInGallery: false },
+      await updateDesign(design.id, {
+        metadata: { ...design.metadata, galleryHidden: true },
       });
       setMessage("Design hidden from gallery.");
       router.refresh();
@@ -416,12 +483,12 @@ export default function GalleryManager({
     }
   }
 
-  async function restoreToGallery(project: Project) {
+  async function restoreToGallery(design: GalleryDesign) {
     setBusy(true);
     setError("");
     try {
-      await updateProject(project.id, {
-        metadata: { ...project.metadata, showInGallery: true },
+      await updateDesign(design.id, {
+        metadata: { ...design.metadata, galleryHidden: false },
       });
       setMessage("Design restored to gallery.");
       router.refresh();
@@ -441,7 +508,7 @@ export default function GalleryManager({
     targetSectionId: string,
     targetIndex: number,
     side: "before" | "after",
-    targetDesigns: Project[],
+    targetDesigns: GalleryDesign[],
     targetCategoryId: string | null
   ) {
     if (!drag || busy) return;
@@ -461,14 +528,14 @@ export default function GalleryManager({
       setError("");
       try {
         const reordered = reorderList(targetDesigns, from, to);
-        setProjects((prev) => {
+        setDesigns((prev) => {
           const orderIds = new Set(reordered.map((d) => d.id));
-          const others = prev.filter((p) => !orderIds.has(p.id));
+          const others = prev.filter((d) => !orderIds.has(d.id));
           return [
             ...others,
             ...reordered.map((d, i) => ({
               ...d,
-              metadata: { ...d.metadata, gallerySortOrder: (i + 1) * 1_000 },
+              sort_order: (i + 1) * 1_000,
             })),
           ];
         });
@@ -484,8 +551,8 @@ export default function GalleryManager({
       return;
     }
 
-    const project = projects.find((p) => p.id === drag.projectId);
-    if (!project) {
+    const design = designs.find((d) => d.id === drag.projectId);
+    if (!design) {
       clearDrag();
       return;
     }
@@ -493,18 +560,18 @@ export default function GalleryManager({
     setBusy(true);
     setError("");
     try {
-      const targetList = targetDesigns.filter((d) => d.id !== project.id);
+      const targetList = targetDesigns.filter((d) => d.id !== design.id);
       const to = Math.min(insertAt, targetList.length);
-      targetList.splice(to, 0, project);
+      targetList.splice(to, 0, design);
 
-      await updateProject(project.id, {
+      await updateDesign(design.id, {
         category_id: targetCategoryId,
-        metadata: { ...project.metadata, showInGallery: true, showOnHomepage: false },
+        metadata: { ...design.metadata, galleryHidden: false },
       });
 
-      setProjects((prev) =>
-        prev.map((p) =>
-          p.id === project.id ? { ...p, category_id: targetCategoryId } : p
+      setDesigns((prev) =>
+        prev.map((d) =>
+          d.id === design.id ? { ...d, category_id: targetCategoryId } : d
         )
       );
 
@@ -521,13 +588,13 @@ export default function GalleryManager({
 
   function handleUploadComplete(
     categoryId: string,
-    result: { created: Project[]; failed: { name: string; error: string }[] }
+    result: { created: GalleryDesign[]; failed: { name: string; error: string }[] }
   ) {
     if (result.created.length) {
-      setProjects((prev) => {
-        const ids = new Set(result.created.map((p) => p.id));
-        const others = prev.filter((p) => !ids.has(p.id));
-        return [...others, ...result.created.map((p) => ({ ...p, category_id: categoryId }))];
+      setDesigns((prev) => {
+        const ids = new Set(result.created.map((d) => d.id));
+        const others = prev.filter((d) => !ids.has(d.id));
+        return [...others, ...result.created.map((d) => ({ ...d, category_id: categoryId }))];
       });
     }
 
@@ -551,8 +618,8 @@ export default function GalleryManager({
   }
 
   function unassignedDesigns() {
-    return projects.filter(
-      (p) => p.metadata?.showInGallery !== false && !p.category_id
+    return designs.filter(
+      (d) => d.metadata?.galleryHidden !== true && !d.category_id
     );
   }
 
@@ -561,7 +628,7 @@ export default function GalleryManager({
     category: Category | null,
     title: string,
     description: string,
-    designs: Project[],
+    sectionDesigns: GalleryDesign[],
     editable: boolean
   ) {
     const cat = category;
@@ -604,7 +671,7 @@ export default function GalleryManager({
                   placeholder="Section title"
                 />
                 <p className="text-zinc-500 text-xs">
-                  {designs.length} design{designs.length === 1 ? "" : "s"} in this section only
+                  {sectionDesigns.length} design{sectionDesigns.length === 1 ? "" : "s"} in this section only
                 </p>
                 <textarea
                   value={cat.description || ""}
@@ -674,7 +741,7 @@ export default function GalleryManager({
             <SectionDesignUpload
               categoryId={cat.id}
               categoryName={cat.name}
-              startSortOrder={nextGallerySortOrder(designs)}
+              startSortOrder={nextGallerySortOrder(sectionDesigns)}
               disabled={busy}
               onComplete={(result) => handleUploadComplete(cat.id, result)}
             />
@@ -685,21 +752,21 @@ export default function GalleryManager({
                   Or pick an unassigned design to add here
                 </p>
                 <div className="admin-gallery-picker__grid">
-                  {unassignedDesigns().map((project) => (
+                  {unassignedDesigns().map((item) => (
                     <button
-                      key={project.id}
+                      key={item.id}
                       type="button"
                       disabled={busy}
-                      onClick={() => assignToSection(project, cat.id)}
+                      onClick={() => assignToSection(item, cat.id)}
                       className="admin-gallery-picker__item"
                       style={{
-                        width: 88 * galleryWidthOverHeight(project),
+                        width: 88 * galleryWidthOverHeight({ metadata: item.metadata }),
                         height: 88,
                       }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={project.media_url} alt={project.title} className="admin-gallery-picker__img" />
-                      <span className="admin-gallery-picker__label">{project.title}</span>
+                      <img src={item.media_url} alt={item.title} className="admin-gallery-picker__img" />
+                      <span className="admin-gallery-picker__label">{item.title}</span>
                     </button>
                   ))}
                 </div>
@@ -728,7 +795,7 @@ export default function GalleryManager({
             </div>
           </div>
 
-          {designs.length === 0 ? (
+          {sectionDesigns.length === 0 ? (
             <div className="admin-gallery-empty">
               <p>No designs in this section yet.</p>
               {editable && cat ? (
@@ -753,10 +820,10 @@ export default function GalleryManager({
             </div>
           ) : (
             <DesignGalleryJustifiedGrid
-              items={designs}
-              renderCard={(project, { height }) => {
-                const index = designs.findIndex((d) => d.id === project.id);
-                const isDragging = drag?.projectId === project.id;
+              items={sectionDesigns.map((d) => ({ ...d, metadata: d.metadata }))}
+              renderCard={(item, { height }) => {
+                const index = sectionDesigns.findIndex((d) => d.id === item.id);
+                const isDragging = drag?.projectId === item.id;
                 const dropHint =
                   dragOver?.sectionId === sectionId && dragOver.index === index
                     ? dragOver.side
@@ -764,8 +831,8 @@ export default function GalleryManager({
 
                 return (
                   <GalleryDesignCard
-                    key={project.id}
-                    project={project}
+                    key={item.id}
+                    design={item}
                     busy={busy}
                     height={height}
                     categories={categories}
@@ -774,17 +841,19 @@ export default function GalleryManager({
                     dropHint={dropHint}
                     onAssignCategory={(categoryId) => {
                       if (!categoryId) {
-                        void moveToUnassigned(project);
+                        void moveToUnassigned(item);
                       } else if (categoryId !== cat?.id) {
-                        void assignToSection(project, categoryId);
+                        void assignToSection(item, categoryId);
                       }
                     }}
-                    onHide={() => hideFromGallery(project)}
+                    onHide={() => hideFromGallery(item)}
                     onRemoveFromSection={() =>
-                      removeFromSection(project, cat?.id ?? null, cat?.name ?? title)
+                      removeFromSection(item, cat?.id ?? null, cat?.name ?? title)
                     }
+                    onFeatureHomepage={() => featureOnHomepage(item)}
+                    onDelete={() => deleteFromGallery(item)}
                     onDragStart={() =>
-                      setDrag({ projectId: project.id, sectionId, index })
+                      setDrag({ projectId: item.id, sectionId, index })
                     }
                     onDragEnd={clearDrag}
                     onDragOver={(e) => {
@@ -812,7 +881,7 @@ export default function GalleryManager({
                         sectionId,
                         index,
                         side,
-                        designs,
+                        sectionDesigns,
                         cat?.id ?? null
                       );
                     }}
@@ -833,9 +902,9 @@ export default function GalleryManager({
           <div>
             <h2 className="text-white font-semibold text-lg">Live gallery preview</h2>
             <p className="text-zinc-500 text-sm mt-1 max-w-2xl">
-              Each design lives in <span className="text-zinc-300">one section only</span>. Upload or
-              add to Food Menu, Flyers, etc. — then drag the grip handle to reorder. Use the section
-              dropdown on a card to move it elsewhere.
+              Gallery CMS is independent from homepage sections. Deleting, moving, or reordering here
+              does not change Featured Flyers or the homepage marquee unless you use{" "}
+              <span className="text-zinc-300">⭐ Feature on Homepage</span>.
             </p>
             <div className="mt-3 text-sm text-zinc-400 space-y-1">
               <p>
@@ -856,9 +925,9 @@ export default function GalleryManager({
               <Settings size={14} />
               Edit page title
             </Link>
-            <Link href="/admin/projects/new?type=design" className="admin-btn-primary text-sm">
+            <Link href="/admin/projects?type=design" className="admin-btn-primary text-sm">
               <Plus size={14} />
-              Upload design
+              Add to homepage
             </Link>
           </div>
         </div>
@@ -913,30 +982,30 @@ export default function GalleryManager({
             </div>
           </div>
           <div className="admin-gallery-hidden-grid">
-            {grouped.hidden.map((project) => (
-              <div key={project.id} className="admin-gallery-hidden-card">
+            {grouped.hidden.map((item) => (
+              <div key={item.id} className="admin-gallery-hidden-card">
                 <div
                   className="admin-gallery-hidden-card__thumb"
                   style={{
                     height: 96,
-                    width: 96 * galleryWidthOverHeight(project),
+                    width: 96 * galleryWidthOverHeight({ metadata: item.metadata }),
                   }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={project.media_url} alt={project.title} className="admin-gallery-card__img" />
+                  <img src={item.media_url} alt={item.title} className="admin-gallery-card__img" />
                 </div>
-                <p className="text-white text-xs font-medium truncate mt-2">{project.title}</p>
+                <p className="text-white text-xs font-medium truncate mt-2">{item.title}</p>
                 <div className="flex gap-2 mt-2">
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => restoreToGallery(project)}
+                    onClick={() => restoreToGallery(item)}
                     className="admin-btn-secondary text-xs flex-1 justify-center"
                   >
                     Restore
                   </button>
                   <Link
-                    href={`/admin/projects/${project.id}`}
+                    href={`/admin/gallery-designs/${item.id}`}
                     className="admin-btn-secondary text-xs px-2"
                   >
                     <Pencil size={12} />
