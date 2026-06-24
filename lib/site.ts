@@ -1,5 +1,6 @@
 export const WHATSAPP_NUMBER = "9779841413038";
 export const WHATSAPP_DISPLAY = "+977 9841413038";
+export const CONTACT_EMAIL = "subingraphix@gmail.com";
 
 export const SOCIAL_LINKS = {
   linkedin: "https://www.linkedin.com/in/subin-khadka-233a53292/",
@@ -31,4 +32,38 @@ export function buildContactWhatsAppMessage(data: {
     "",
     data.message,
   ].join("\n");
+}
+
+export function buildContactEmailSubject(data: { name: string; project: string }) {
+  return `Portfolio inquiry — ${data.project} (${data.name})`;
+}
+
+export function buildContactEmailBody(data: {
+  name: string;
+  email: string;
+  project: string;
+  message: string;
+}) {
+  return [
+    `Hi Subin,`,
+    ``,
+    `Name: ${data.name}`,
+    `Email: ${data.email}`,
+    `Project: ${data.project}`,
+    ``,
+    data.message,
+    ``,
+    `Sent from your portfolio contact form.`,
+  ].join("\n");
+}
+
+export function getContactEmailUrl(data: {
+  name: string;
+  email: string;
+  project: string;
+  message: string;
+}) {
+  const subject = buildContactEmailSubject(data);
+  const body = buildContactEmailBody(data);
+  return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }

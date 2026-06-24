@@ -1,15 +1,19 @@
 "use client";
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Send, MessageCircle, Clock } from "lucide-react";
+import { Mail, MapPin, Send, MessageCircle, Clock } from "lucide-react";
 import Instagram from "@/components/icons/Instagram";
 import {
   buildContactWhatsAppMessage,
+  CONTACT_EMAIL,
+  getContactEmailUrl,
   getWhatsAppUrl,
   SOCIAL_LINKS,
   WHATSAPP_DISPLAY,
   WHATSAPP_GREETING,
 } from "@/lib/site";
+
+type DeliveryMethod = "whatsapp" | "email";
 
 const LinkedinIcon = ({ size = 16 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size}>
@@ -29,7 +33,14 @@ const contactMethods = [
     label: "WhatsApp",
     value: WHATSAPP_DISPLAY,
     href: getWhatsAppUrl(WHATSAPP_GREETING),
-    hint: "Tap to chat directly",
+    hint: "Fastest reply — tap to chat",
+  },
+  {
+    icon: Mail,
+    label: "Gmail",
+    value: CONTACT_EMAIL,
+    href: `mailto:${CONTACT_EMAIL}`,
+    hint: "Email me anytime",
   },
   {
     icon: MapPin,
@@ -47,16 +58,27 @@ const socialLinks = [
 ];
 
 export default function Contact() {
-  const [formData, setFormData] = useState({ name: "", email: "", project: "Video Editing", message: "" });
-  const [submitted, setSubmitted] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    project: "Video Editing",
+    message: "",
+  });
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("whatsapp");
+  const [submitted, setSubmitted] = useState<DeliveryMethod | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.message) return;
 
-    const message = buildContactWhatsAppMessage(formData);
-    window.open(getWhatsAppUrl(message), "_blank", "noopener,noreferrer");
-    setSubmitted(true);
+    if (deliveryMethod === "whatsapp") {
+      const message = buildContactWhatsAppMessage(formData);
+      window.open(getWhatsAppUrl(message), "_blank", "noopener,noreferrer");
+    } else {
+      window.location.href = getContactEmailUrl(formData);
+    }
+
+    setSubmitted(deliveryMethod);
     setFormData({ name: "", email: "", project: "Video Editing", message: "" });
   };
 
@@ -77,7 +99,7 @@ export default function Contact() {
             Let&apos;s <span className="text-purple-400">Work Together</span>
           </h2>
           <p className="text-gray-500 text-sm mt-3 max-w-md mx-auto leading-relaxed px-2">
-            Fill out the form and it will open WhatsApp with your message ready to send.
+            Choose WhatsApp for the fastest reply, or send your message by Gmail.
           </p>
         </motion.div>
 
@@ -107,8 +129,8 @@ export default function Contact() {
                     {method.href ? (
                       <a
                         href={method.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        target={method.href.startsWith("http") ? "_blank" : undefined}
+                        rel={method.href.startsWith("http") ? "noopener noreferrer" : undefined}
                         className="text-white hover:text-purple-400 transition-colors text-sm font-medium block truncate"
                       >
                         {method.value}
@@ -167,6 +189,43 @@ export default function Contact() {
                   exit={{ opacity: 0 }}
                   className="space-y-4 sm:space-y-5 relative z-10"
                 >
+                  <div>
+                    <label className="text-gray-400 text-xs font-medium block mb-2">
+                      Send message via
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryMethod("whatsapp")}
+                        className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-colors ${
+                          deliveryMethod === "whatsapp"
+                            ? "border-green-500/40 bg-green-500/10 text-green-300"
+                            : "border-white/10 bg-white/[0.02] text-gray-400 hover:border-white/20 hover:text-white"
+                        }`}
+                      >
+                        <MessageCircle size={16} />
+                        WhatsApp
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryMethod("email")}
+                        className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-colors ${
+                          deliveryMethod === "email"
+                            ? "border-purple-500/40 bg-purple-500/10 text-purple-300"
+                            : "border-white/10 bg-white/[0.02] text-gray-400 hover:border-white/20 hover:text-white"
+                        }`}
+                      >
+                        <Mail size={16} />
+                        Gmail
+                      </button>
+                    </div>
+                    <p className="text-gray-600 text-xs mt-2">
+                      {deliveryMethod === "whatsapp"
+                        ? "Opens WhatsApp with your message ready — tap send and it reaches me instantly."
+                        : `Opens your email app to send to ${CONTACT_EMAIL}.`}
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                     <div>
                       <label className="text-gray-400 text-xs font-medium block mb-2">Your Name</label>
@@ -227,7 +286,15 @@ export default function Contact() {
                       whileTap={{ scale: 0.98 }}
                       className="btn btn-primary flex-1 !rounded-xl !py-3.5 sm:!py-4 text-sm sm:text-base"
                     >
-                      <Send size={18} /> Send via WhatsApp
+                      {deliveryMethod === "whatsapp" ? (
+                        <>
+                          <MessageCircle size={18} /> Send via WhatsApp
+                        </>
+                      ) : (
+                        <>
+                          <Mail size={18} /> Send via Gmail
+                        </>
+                      )}
                     </motion.button>
                     <a
                       href={getWhatsAppUrl(WHATSAPP_GREETING)}
@@ -235,7 +302,7 @@ export default function Contact() {
                       rel="noopener noreferrer"
                       className="btn btn-secondary flex-1 sm:flex-none !rounded-xl !py-3.5 sm:!py-4 text-sm justify-center"
                     >
-                      <MessageCircle size={18} /> Chat on WhatsApp
+                      <MessageCircle size={18} /> Quick WhatsApp chat
                     </a>
                   </div>
                 </motion.form>
@@ -251,13 +318,17 @@ export default function Contact() {
                     ✓
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-white mb-2">Opening WhatsApp</h3>
+                    <h3 className="text-xl font-bold text-white mb-2">
+                      {submitted === "whatsapp" ? "Opening WhatsApp" : "Opening your email app"}
+                    </h3>
                     <p className="text-gray-500 text-sm max-w-xs mx-auto leading-relaxed px-4">
-                      Your message is ready in WhatsApp. Tap send to reach me directly.
+                      {submitted === "whatsapp"
+                        ? "Your message is ready in WhatsApp. Tap send and it will reach me right away."
+                        : `Your message is ready to send to ${CONTACT_EMAIL}. Tap send in your email app.`}
                     </p>
                   </div>
                   <button
-                    onClick={() => setSubmitted(false)}
+                    onClick={() => setSubmitted(null)}
                     className="text-purple-400 hover:text-purple-300 text-sm font-semibold transition-colors"
                   >
                     Send another message →
