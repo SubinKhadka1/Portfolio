@@ -3,10 +3,6 @@ import { detectDesignDimensionsFromUrl } from "@/lib/design-image";
 import { parseResponseJson } from "@/lib/parse-response";
 import type { Project, ProjectInput } from "@/lib/types/database";
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export function titleFromMediaUrl(url: string) {
   const raw = url.split("/").pop()?.replace(/\.[^.]+$/, "") || "Untitled";
   const decoded = decodeURIComponent(raw);
@@ -28,22 +24,22 @@ export async function uploadDesignFile(file: File): Promise<string> {
   return data.url;
 }
 
-export async function createGalleryDesign({
+function buildGalleryDesignPayload({
   mediaUrl,
   categoryId,
   gallerySortOrder,
   showOnHomepage = false,
   title,
+  detected,
 }: {
   mediaUrl: string;
   categoryId: string;
   gallerySortOrder: number;
   showOnHomepage?: boolean;
   title?: string;
-}): Promise<Project> {
-  const detected = await detectDesignDimensionsFromUrl(mediaUrl);
-
-  const payload: ProjectInput = {
+  detected: Awaited<ReturnType<typeof detectDesignDimensionsFromUrl>>;
+}): ProjectInput {
+  return {
     type: "design",
     title: title?.trim() || titleFromMediaUrl(mediaUrl),
     description: "",
@@ -61,6 +57,30 @@ export async function createGalleryDesign({
       gallerySortOrder,
     },
   };
+}
+
+export async function createGalleryDesign({
+  mediaUrl,
+  categoryId,
+  gallerySortOrder,
+  showOnHomepage = false,
+  title,
+}: {
+  mediaUrl: string;
+  categoryId: string;
+  gallerySortOrder: number;
+  showOnHomepage?: boolean;
+  title?: string;
+}): Promise<Project> {
+  const detected = await detectDesignDimensionsFromUrl(mediaUrl);
+  const payload = buildGalleryDesignPayload({
+    mediaUrl,
+    categoryId,
+    gallerySortOrder,
+    showOnHomepage,
+    title,
+    detected,
+  });
 
   const res = await fetch("/api/projects", {
     method: "POST",
@@ -77,12 +97,32 @@ export async function createGalleryDesign({
   return data;
 }
 
+async function createGalleryDesignsBatch(
+  items: ProjectInput[],
+  categoryId: string
+): Promise<Project[]> {
+  const res = await fetch("/api/projects/batch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items }),
+  });
+  const data = await parseResponseJson<Project[] | { error?: string }>(res);
+  if (!res.ok || !Array.isArray(data)) {
+    throw new Error(!Array.isArray(data) && data.error ? data.error : "Failed to save designs");
+  }
+  const wrongSection = data.find((p) => p.category_id !== categoryId);
+  if (wrongSection) {
+    throw new Error("Some designs were saved to the wrong section. Please refresh and try again.");
+  }
+  return data;
+}
+
 export type SectionUploadResult = {
   created: Project[];
   failed: { name: string; error: string }[];
 };
 
-/** Upload many files into one gallery section only — each design belongs to that section. */
+/** Upload many files into one gallery section — single save for all designs. */
 export async function uploadDesignsToSection({
   files,
   categoryId,
@@ -94,7 +134,6 @@ export async function uploadDesignsToSection({
   startSortOrder: number;
   onProgress?: (message: string) => void;
 }): Promise<SectionUploadResult> {
-  const created: Project[] = [];
   const failed: { name: string; error: string }[] = [];
   const uploaded: { file: File; url: string }[] = [];
 
@@ -112,25 +151,52 @@ export async function uploadDesignsToSection({
     }
   }
 
+  if (uploaded.length === 0) {
+    return { created: [], failed };
+  }
+
+  onProgress?.(`Preparing ${uploaded.length} design${uploaded.length === 1 ? "" : "s"}…`);
+
+  const payloads: { file: File; payload: ProjectInput }[] = [];
   for (let i = 0; i < uploaded.length; i++) {
     const { file, url } = uploaded[i];
-    onProgress?.(`Adding ${i + 1} of ${uploaded.length} to section…`);
     try {
-      const project = await createGalleryDesign({
-        mediaUrl: url,
-        categoryId,
-        gallerySortOrder: startSortOrder + i * 1_000,
-        showOnHomepage: false,
+      const detected = await detectDesignDimensionsFromUrl(url);
+      payloads.push({
+        file,
+        payload: buildGalleryDesignPayload({
+          mediaUrl: url,
+          categoryId,
+          gallerySortOrder: startSortOrder + i * 1_000,
+          showOnHomepage: false,
+          detected,
+        }),
       });
-      created.push(project);
-      if (i < uploaded.length - 1) await sleep(120);
     } catch (err) {
       failed.push({
         name: file.name,
-        error: err instanceof Error ? err.message : "Could not add to section",
+        error: err instanceof Error ? err.message : "Could not read image size",
       });
     }
   }
 
-  return { created, failed };
+  if (payloads.length === 0) {
+    return { created: [], failed };
+  }
+
+  onProgress?.(`Saving ${payloads.length} design${payloads.length === 1 ? "" : "s"} to section…`);
+
+  try {
+    const created = await createGalleryDesignsBatch(
+      payloads.map((entry) => entry.payload),
+      categoryId
+    );
+    return { created, failed };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not add to section";
+    for (const { file } of payloads) {
+      failed.push({ name: file.name, error: message });
+    }
+    return { created: [], failed };
+  }
 }

@@ -262,21 +262,29 @@ async function savePortfolioStore(store: PortfolioStore) {
 
 async function updatePortfolioStore(
   mutate: (store: PortfolioStore) => void | Promise<void>,
-  options?: { verifyId?: string }
+  options?: { verifyId?: string; verifyIds?: string[] }
 ): Promise<PortfolioStore> {
   let lastError: Error | null = null;
+  const idsToVerify =
+    options?.verifyIds?.length
+      ? options.verifyIds
+      : options?.verifyId
+        ? [options.verifyId]
+        : [];
+  const maxAttempts = idsToVerify.length > 0 && isBlobStorageEnabled() ? 8 : 4;
 
-  for (let attempt = 0; attempt < 4; attempt++) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const store = cloneStore(await loadPortfolioStore());
     await mutate(store);
     await savePortfolioStore(store);
 
-    if (!options?.verifyId) return store;
+    if (idsToVerify.length === 0) return store;
 
-    await sleep(120 * (attempt + 1));
+    const delayMs = isBlobStorageEnabled() ? 250 * (attempt + 1) : 120 * (attempt + 1);
+    await sleep(delayMs);
     try {
       const check = await loadPortfolioStore();
-      if (storeHasId(check, options.verifyId)) return store;
+      if (idsToVerify.every((id) => storeHasId(check, id))) return store;
       lastError = new Error("New item did not persist. Retrying save...");
     } catch (err) {
       lastError = err instanceof Error ? err : new Error("Save verification failed");
@@ -320,73 +328,103 @@ export async function getLocalProject(id: string): Promise<Project | null> {
   return null;
 }
 
+function appendProjectToStore(
+  store: PortfolioStore,
+  input: ProjectInput,
+  projectId: string,
+  now: string
+): Project {
+  const type = input.type;
+  const maxOrder = store[type].reduce((max, p) => Math.max(max, p.sort_order), -1);
+
+  let sortOrder = input.sort_order ?? maxOrder + 1;
+  if (type === "design" || type === "client") {
+    const row = clampMarqueeRow(input.metadata?.marqueeRow ?? 1);
+    const inRow = store[type].filter(
+      (p) => clampMarqueeRow(p.metadata?.marqueeRow ?? 1) === row
+    );
+    sortOrder = marqueeSortOrder(row, inRow.length);
+  }
+
+  const designMetadata =
+    type === "design"
+      ? {
+          ...input.metadata,
+          marqueeRow: clampMarqueeRow(input.metadata?.marqueeRow ?? 1),
+          showOnHomepage: input.metadata?.showOnHomepage ?? true,
+          showInGallery: input.metadata?.showInGallery ?? true,
+          homepageSortOrder:
+            input.metadata?.homepageSortOrder ??
+            marqueeSortOrder(
+              clampMarqueeRow(input.metadata?.marqueeRow ?? 1),
+              store.design.filter(
+                (p) =>
+                  p.metadata?.showOnHomepage !== false &&
+                  clampMarqueeRow(p.metadata?.marqueeRow ?? 1) ===
+                    clampMarqueeRow(input.metadata?.marqueeRow ?? 1)
+              ).length
+            ),
+          gallerySortOrder: input.metadata?.gallerySortOrder ?? sortOrder,
+        }
+      : type === "client"
+        ? {
+            ...input.metadata,
+            marqueeRow: clampMarqueeRow(input.metadata?.marqueeRow ?? 1),
+          }
+        : input.metadata || {};
+
+  const project: Project = {
+    id: projectId,
+    type: input.type,
+    title: input.title || "",
+    description: input.description || "",
+    media_url: input.media_url,
+    thumbnail_url: input.thumbnail_url || null,
+    category_id: input.category_id || null,
+    featured: input.featured ?? false,
+    published: input.published ?? true,
+    sort_order: sortOrder,
+    metadata: designMetadata,
+    created_at: now,
+    updated_at: now,
+    categories: null,
+  };
+
+  store[type].push(project);
+  return project;
+}
+
 export async function createLocalProject(input: ProjectInput): Promise<Project> {
   const now = new Date().toISOString();
-  const type = input.type;
   const projectId = randomUUID();
 
   let project!: Project;
 
   await updatePortfolioStore((store) => {
-    const maxOrder = store[type].reduce((max, p) => Math.max(max, p.sort_order), -1);
-
-    let sortOrder = input.sort_order ?? maxOrder + 1;
-    if (type === "design" || type === "client") {
-      const row = clampMarqueeRow(input.metadata?.marqueeRow ?? 1);
-      const inRow = store[type].filter(
-        (p) => clampMarqueeRow(p.metadata?.marqueeRow ?? 1) === row
-      );
-      sortOrder = marqueeSortOrder(row, inRow.length);
-    }
-
-    const designMetadata =
-      type === "design"
-        ? {
-            ...input.metadata,
-            marqueeRow: clampMarqueeRow(input.metadata?.marqueeRow ?? 1),
-            showOnHomepage: input.metadata?.showOnHomepage ?? true,
-            showInGallery: input.metadata?.showInGallery ?? true,
-            homepageSortOrder:
-              input.metadata?.homepageSortOrder ??
-              marqueeSortOrder(
-                clampMarqueeRow(input.metadata?.marqueeRow ?? 1),
-                store.design.filter(
-                  (p) =>
-                    p.metadata?.showOnHomepage !== false &&
-                    clampMarqueeRow(p.metadata?.marqueeRow ?? 1) ===
-                      clampMarqueeRow(input.metadata?.marqueeRow ?? 1)
-                ).length
-              ),
-            gallerySortOrder: input.metadata?.gallerySortOrder ?? sortOrder,
-          }
-        : type === "client"
-          ? {
-              ...input.metadata,
-              marqueeRow: clampMarqueeRow(input.metadata?.marqueeRow ?? 1),
-            }
-          : input.metadata || {};
-
-    project = {
-      id: projectId,
-      type: input.type,
-      title: input.title || "",
-      description: input.description || "",
-      media_url: input.media_url,
-      thumbnail_url: input.thumbnail_url || null,
-      category_id: input.category_id || null,
-      featured: input.featured ?? false,
-      published: input.published ?? true,
-      sort_order: sortOrder,
-      metadata: designMetadata,
-      created_at: now,
-      updated_at: now,
-      categories: null,
-    };
-
-    store[type].push(project);
+    project = appendProjectToStore(store, input, projectId, now);
   }, { verifyId: projectId });
 
   return project;
+}
+
+/** Save many projects in one write — avoids blob store races during bulk gallery upload. */
+export async function createLocalProjectsBatch(inputs: ProjectInput[]): Promise<Project[]> {
+  if (inputs.length === 0) return [];
+  if (inputs.length === 1) return [await createLocalProject(inputs[0])];
+
+  const now = new Date().toISOString();
+  const projects: Project[] = [];
+  const ids: string[] = [];
+
+  await updatePortfolioStore((store) => {
+    for (const input of inputs) {
+      const projectId = randomUUID();
+      ids.push(projectId);
+      projects.push(appendProjectToStore(store, input, projectId, now));
+    }
+  }, { verifyIds: ids });
+
+  return projects;
 }
 
 export async function updateLocalProject(
