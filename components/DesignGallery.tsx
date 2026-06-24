@@ -6,17 +6,15 @@ import { ArrowLeft, X, ZoomIn } from "lucide-react";
 import Link from "next/link";
 import type { DesignItem } from "@/lib/types/database";
 import type { DesignGallerySection } from "@/lib/design-gallery";
-import DesignGalleryJustifiedGrid from "@/components/DesignGalleryJustifiedGrid";
+import DesignGalleryNaturalGrid from "@/components/DesignGalleryNaturalGrid";
 
 function GalleryCard({
   design,
   index,
-  height,
   onOpen,
 }: {
   design: DesignItem;
   index: number;
-  height: number;
   onOpen: () => void;
 }) {
   return (
@@ -27,8 +25,7 @@ function GalleryCard({
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.45, delay: Math.min(index * 0.04, 0.35), ease: "easeOut" }}
       onClick={onOpen}
-      className="design-gallery-card group text-left"
-      style={{ height, width: "100%" }}
+      className="design-gallery-card design-gallery-card--natural group text-left"
       aria-label={`Open ${design.title}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -77,14 +74,13 @@ function GallerySection({
         </div>
       </motion.div>
 
-      <DesignGalleryJustifiedGrid
+      <DesignGalleryNaturalGrid
         items={section.designs}
-        renderCard={(design, { height, index }) => (
+        renderCard={(design, { index }) => (
           <GalleryCard
             key={design.id}
             design={design}
             index={index}
-            height={height}
             onOpen={() => setActiveDesign(design)}
           />
         )}
