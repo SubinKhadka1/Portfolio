@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import DesignGalleryJustifiedGrid from "@/components/DesignGalleryJustifiedGrid";
+import SectionDesignUpload from "@/components/admin/SectionDesignUpload";
 import { buildGalleryReorderItems } from "@/lib/reorder-payload";
 import { groupProjectsForGalleryAdmin } from "@/lib/gallery-admin";
 import { galleryWidthOverHeight } from "@/lib/design-gallery-layout";
@@ -32,15 +33,40 @@ function reorderList<T>(items: T[], from: number, to: number) {
   return next;
 }
 
+function nextGallerySortOrder(designs: Project[]) {
+  const max = designs.reduce(
+    (highest, design) => Math.max(highest, design.metadata?.gallerySortOrder ?? 0),
+    0
+  );
+  return max + 1_000;
+}
+
+type GalleryDrag = {
+  projectId: string;
+  sectionId: string;
+  index: number;
+};
+
+type DragOverTarget = {
+  sectionId: string;
+  index: number;
+  side: "before" | "after";
+};
+
 function GalleryDesignCard({
   project,
   busy,
   height,
   categories,
   currentCategoryId,
+  isDragging,
+  dropHint,
   onAssignCategory,
   onHide,
   onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
   onDrop,
 }: {
   project: Project;
@@ -48,18 +74,35 @@ function GalleryDesignCard({
   height: number;
   categories: Category[];
   currentCategoryId: string | null;
+  isDragging: boolean;
+  dropHint: "before" | "after" | null;
   onAssignCategory: (categoryId: string | null) => void;
   onHide: () => void;
   onDragStart: () => void;
-  onDrop: () => void;
+  onDragEnd: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: (e: React.DragEvent) => void;
+  onDrop: (e: React.DragEvent) => void;
 }) {
   return (
     <article
       draggable={!busy}
-      onDragStart={onDragStart}
-      onDragOver={(e) => e.preventDefault()}
+      onDragStart={(e) => {
+        if (!(e.target as HTMLElement).closest("[data-gallery-drag-handle]")) {
+          e.preventDefault();
+          return;
+        }
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", project.id);
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className="admin-gallery-card"
+      className={`admin-gallery-card${isDragging ? " admin-gallery-card--dragging" : ""}${
+        dropHint === "before" ? " admin-gallery-card--drop-before" : ""
+      }${dropHint === "after" ? " admin-gallery-card--drop-after" : ""}`}
       style={{ height, width: "100%" }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -70,7 +113,7 @@ function GalleryDesignCard({
         draggable={false}
       />
       <div className="admin-gallery-card__bar">
-        <span className="admin-gallery-card__grip" aria-hidden>
+        <span className="admin-gallery-card__grip" data-gallery-drag-handle aria-hidden>
           <GripVertical size={12} />
         </span>
         <p className="admin-gallery-card__title">{project.title || "Untitled"}</p>
@@ -132,7 +175,8 @@ export default function GalleryManager({
   const [newSectionName, setNewSectionName] = useState("");
   const [newSectionDesc, setNewSectionDesc] = useState("");
   const [pickerSectionId, setPickerSectionId] = useState<string | null>(null);
-  const [drag, setDrag] = useState<{ sectionId: string; index: number } | null>(null);
+  const [drag, setDrag] = useState<GalleryDrag | null>(null);
+  const [dragOver, setDragOver] = useState<DragOverTarget | null>(null);
 
   const grouped = useMemo(
     () => groupProjectsForGalleryAdmin(projects, categories),
@@ -326,33 +370,101 @@ export default function GalleryManager({
     }
   }
 
-  async function handleDrop(sectionId: string, targetIndex: number, designs: Project[]) {
-    if (!drag || drag.sectionId !== sectionId || busy) return;
-    if (drag.index === targetIndex) {
-      setDrag(null);
+  function clearDrag() {
+    setDrag(null);
+    setDragOver(null);
+  }
+
+  async function handleGalleryDrop(
+    targetSectionId: string,
+    targetIndex: number,
+    side: "before" | "after",
+    targetDesigns: Project[],
+    targetCategoryId: string | null
+  ) {
+    if (!drag || busy) return;
+
+    let insertAt = side === "after" ? targetIndex + 1 : targetIndex;
+
+    if (drag.sectionId === targetSectionId) {
+      const from = drag.index;
+      let to = insertAt;
+      if (from < to) to -= 1;
+      if (from === to) {
+        clearDrag();
+        return;
+      }
+
+      setBusy(true);
+      setError("");
+      try {
+        const reordered = reorderList(targetDesigns, from, to);
+        setProjects((prev) => {
+          const orderIds = new Set(reordered.map((d) => d.id));
+          const others = prev.filter((p) => !orderIds.has(p.id));
+          return [
+            ...others,
+            ...reordered.map((d, i) => ({
+              ...d,
+              metadata: { ...d.metadata, gallerySortOrder: (i + 1) * 1_000 },
+            })),
+          ];
+        });
+        await persistGalleryOrder(reordered);
+        setMessage("Design order saved.");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to reorder");
+        await refetchAll();
+      } finally {
+        setBusy(false);
+        clearDrag();
+      }
       return;
     }
+
+    const project = projects.find((p) => p.id === drag.projectId);
+    if (!project) {
+      clearDrag();
+      return;
+    }
+
     setBusy(true);
     setError("");
     try {
-      const reordered = reorderList(designs, drag.index, targetIndex);
-      setProjects((prev) => {
-        const orderIds = new Set(reordered.map((d) => d.id));
-        const others = prev.filter((p) => !orderIds.has(p.id));
-        return [...others, ...reordered.map((d, i) => ({
-          ...d,
-          metadata: { ...d.metadata, gallerySortOrder: (i + 1) * 1_000 },
-        }))];
+      const targetList = targetDesigns.filter((d) => d.id !== project.id);
+      const to = Math.min(insertAt, targetList.length);
+      targetList.splice(to, 0, project);
+
+      await updateProject(project.id, {
+        category_id: targetCategoryId,
+        metadata: { ...project.metadata, showInGallery: true },
       });
-      await persistGalleryOrder(reordered);
-      setMessage("Gallery order saved.");
+
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === project.id ? { ...p, category_id: targetCategoryId } : p
+        )
+      );
+
+      await persistGalleryOrder(targetList);
+      setMessage(`Moved to ${targetCategoryId ? "section" : "unassigned"}.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to reorder");
+      setError(err instanceof Error ? err.message : "Failed to move design");
       await refetchAll();
     } finally {
       setBusy(false);
-      setDrag(null);
+      clearDrag();
     }
+  }
+
+  function handleDesignsCreated(created: Project[]) {
+    setProjects((prev) => [...prev, ...created]);
+    setMessage(
+      created.length === 1
+        ? "Design uploaded to section."
+        : `${created.length} designs uploaded to section.`
+    );
+    void refetchAll();
   }
 
   function assignableDesigns(sectionId: string) {
@@ -437,7 +549,7 @@ export default function GalleryManager({
                     className="admin-btn-secondary text-sm"
                   >
                     <Plus size={14} />
-                    Add design
+                    Add / upload
                   </button>
                   <button
                     type="button"
@@ -462,7 +574,7 @@ export default function GalleryManager({
         {editable && cat && pickerSectionId === cat.id ? (
           <div className="admin-gallery-picker">
             <div className="flex items-center justify-between gap-3 mb-3">
-              <p className="text-zinc-300 text-sm font-medium">Add a design to this section</p>
+              <p className="text-zinc-300 text-sm font-medium">Add designs to {cat.name}</p>
               <button
                 type="button"
                 onClick={() => setPickerSectionId(null)}
@@ -472,6 +584,17 @@ export default function GalleryManager({
                 <X size={14} />
               </button>
             </div>
+
+            <SectionDesignUpload
+              categoryId={cat.id}
+              categoryName={cat.name}
+              nextSortOrder={nextGallerySortOrder(designs)}
+              disabled={busy}
+              onCreated={handleDesignsCreated}
+              onError={setError}
+            />
+
+            <p className="text-zinc-500 text-xs mt-4 mb-2">Or choose an existing design</p>
             {assignableDesigns(cat.id).length === 0 ? (
               <p className="text-zinc-500 text-sm">
                 No other designs available.{" "}
@@ -522,14 +645,24 @@ export default function GalleryManager({
             <div className="admin-gallery-empty">
               <p>No designs in this section yet.</p>
               {editable && cat ? (
-                <button
-                  type="button"
-                  onClick={() => setPickerSectionId(cat.id)}
-                  className="admin-btn-primary text-sm mt-3"
-                >
-                  <Plus size={14} />
-                  Add design
-                </button>
+                <div className="mt-4 max-w-md mx-auto space-y-3">
+                  <SectionDesignUpload
+                    categoryId={cat.id}
+                    categoryName={cat.name}
+                    nextSortOrder={1_000}
+                    disabled={busy}
+                    onCreated={handleDesignsCreated}
+                    onError={setError}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPickerSectionId(cat.id)}
+                    className="admin-btn-secondary text-sm w-full justify-center"
+                  >
+                    <Plus size={14} />
+                    Add existing design
+                  </button>
+                </div>
               ) : null}
             </div>
           ) : (
@@ -537,6 +670,12 @@ export default function GalleryManager({
               items={designs}
               renderCard={(project, { height }) => {
                 const index = designs.findIndex((d) => d.id === project.id);
+                const isDragging = drag?.projectId === project.id;
+                const dropHint =
+                  dragOver?.sectionId === sectionId && dragOver.index === index
+                    ? dragOver.side
+                    : null;
+
                 return (
                   <GalleryDesignCard
                     key={project.id}
@@ -545,10 +684,43 @@ export default function GalleryManager({
                     height={height}
                     categories={categories}
                     currentCategoryId={cat?.id ?? null}
+                    isDragging={isDragging}
+                    dropHint={dropHint}
                     onAssignCategory={(categoryId) => assignToSection(project, categoryId)}
                     onHide={() => hideFromGallery(project)}
-                    onDragStart={() => setDrag({ sectionId, index })}
-                    onDrop={() => handleDrop(sectionId, index, designs)}
+                    onDragStart={() =>
+                      setDrag({ projectId: project.id, sectionId, index })
+                    }
+                    onDragEnd={clearDrag}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      const side =
+                        e.clientX < rect.left + rect.width / 2 ? "before" : "after";
+                      setDragOver({ sectionId, index, side });
+                    }}
+                    onDragLeave={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                        setDragOver((prev) =>
+                          prev?.sectionId === sectionId && prev.index === index ? null : prev
+                        );
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const side =
+                        dragOver?.sectionId === sectionId && dragOver.index === index
+                          ? dragOver.side
+                          : "before";
+                      void handleGalleryDrop(
+                        sectionId,
+                        index,
+                        side,
+                        designs,
+                        cat?.id ?? null
+                      );
+                    }}
                   />
                 );
               }}
@@ -567,7 +739,8 @@ export default function GalleryManager({
             <h2 className="text-white font-semibold text-lg">Live gallery preview</h2>
             <p className="text-zinc-500 text-sm mt-1 max-w-2xl">
               Sections below match the white <span className="text-zinc-300">/designs</span> page —
-              same layout and image proportions. Homepage marquee is managed separately under Designs.
+              same layout and image proportions. Drag the grip handle on a design to reorder or move
+              it to another slot. Upload images directly into each section.
             </p>
             <div className="mt-3 text-sm text-zinc-400 space-y-1">
               <p>
