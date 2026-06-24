@@ -19,7 +19,7 @@ export default function Footer({ variant = "dark" }: { variant?: "light" | "dark
               S
             </div>
             <span className={`text-sm font-bold ${light ? "text-zinc-900" : "text-white"}`}>
-              Subin<span className="text-purple-500 text-[0.72em] leading-none align-baseline">x</span>
+              Subin<span className="text-purple-500">.</span>
             </span>
           </a>
 
