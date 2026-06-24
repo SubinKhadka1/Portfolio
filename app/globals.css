@@ -1231,6 +1231,26 @@ body {
   color: #71717a;
 }
 
+.admin-gallery-upload__result {
+  margin-top: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #3f3f46;
+  background: #09090b;
+}
+
+.admin-gallery-upload__result-ok {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: #86efac;
+}
+
+.admin-gallery-upload__result-fail {
+  margin-top: 0.45rem;
+}
+
 .admin-gallery-card__title {
   flex: 1;
   min-width: 0;

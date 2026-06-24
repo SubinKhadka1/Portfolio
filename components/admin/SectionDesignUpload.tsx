@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Loader2, Upload } from "lucide-react";
-import { createGalleryDesign, uploadDesignFile } from "@/lib/gallery-design-create";
+import { CheckCircle2, Loader2, Upload, XCircle } from "lucide-react";
+import { uploadDesignsToSection } from "@/lib/gallery-design-create";
 import type { Project } from "@/lib/types/database";
 
 const ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/jpg,.jpg,.jpeg,.png,.webp,.gif";
@@ -15,76 +15,66 @@ function isImageFile(file: File) {
 export default function SectionDesignUpload({
   categoryId,
   categoryName,
-  nextSortOrder,
+  startSortOrder,
   disabled,
-  onCreated,
-  onError,
+  onComplete,
 }: {
   categoryId: string;
   categoryName: string;
-  nextSortOrder: number;
+  startSortOrder: number;
   disabled?: boolean;
-  onCreated: (projects: Project[]) => void;
-  onError: (message: string) => void;
+  onComplete: (result: { created: Project[]; failed: { name: string; error: string }[] }) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState("");
+  const [lastResult, setLastResult] = useState<{
+    created: number;
+    failed: { name: string; error: string }[];
+  } | null>(null);
 
-  const uploadFiles = useCallback(
+  const runUpload = useCallback(
     async (files: File[]) => {
       const allowed = files.filter(isImageFile);
       if (!allowed.length) {
-        onError("Please choose JPG, PNG, or WebP images.");
+        onComplete({ created: [], failed: [{ name: "files", error: "Please choose JPG, PNG, or WebP images." }] });
         return;
       }
 
       setUploading(true);
-      const created: Project[] = [];
-      const failures: string[] = [];
+      setLastResult(null);
+      setProgress(`Starting upload of ${allowed.length} image${allowed.length === 1 ? "" : "s"}…`);
 
       try {
-        for (let i = 0; i < allowed.length; i++) {
-          const file = allowed[i];
-          setProgress(`Uploading ${i + 1} of ${allowed.length}…`);
-          try {
-            const url = await uploadDesignFile(file);
-            const project = await createGalleryDesign({
-              mediaUrl: url,
-              categoryId,
-              gallerySortOrder: nextSortOrder + i * 1_000,
-              showOnHomepage: false,
-            });
-            created.push(project);
-          } catch (err) {
-            failures.push(err instanceof Error ? err.message : `Failed: ${file.name}`);
-          }
-        }
+        const result = await uploadDesignsToSection({
+          files: allowed,
+          categoryId,
+          startSortOrder,
+          onProgress: setProgress,
+        });
 
-        if (created.length) onCreated(created);
-        if (failures.length) {
-          onError(failures.join(" "));
-        }
+        setLastResult({ created: result.created.length, failed: result.failed });
+        onComplete(result);
       } finally {
         setUploading(false);
         setProgress("");
         if (inputRef.current) inputRef.current.value = "";
       }
     },
-    [categoryId, nextSortOrder, onCreated, onError]
+    [categoryId, startSortOrder, onComplete]
   );
 
   function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
-    if (files.length) void uploadFiles(files);
+    if (files.length) void runUpload(files);
   }
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragging(false);
     if (disabled || uploading) return;
-    void uploadFiles(Array.from(e.dataTransfer.files || []));
+    void runUpload(Array.from(e.dataTransfer.files || []));
   }
 
   return (
@@ -117,20 +107,46 @@ export default function SectionDesignUpload({
         {uploading ? (
           <>
             <Loader2 size={22} className="animate-spin text-purple-400" />
-            <span className="admin-gallery-upload__text">{progress || "Uploading…"}</span>
+            <span className="admin-gallery-upload__text">{progress || "Working…"}</span>
           </>
         ) : (
           <>
             <Upload size={22} className="text-purple-400" />
             <span className="admin-gallery-upload__text">
-              Upload to <strong>{categoryName}</strong>
+              Upload to <strong>{categoryName}</strong> only
             </span>
             <span className="admin-gallery-upload__hint">
-              Drag images here or click to choose from your device
+              Select multiple images — they are added only to this section. Reorder them after upload.
             </span>
           </>
         )}
       </button>
+
+      {lastResult && !uploading ? (
+        <div className="admin-gallery-upload__result">
+          {lastResult.created > 0 ? (
+            <p className="admin-gallery-upload__result-ok">
+              <CheckCircle2 size={14} />
+              {lastResult.created} design{lastResult.created === 1 ? "" : "s"} added to {categoryName}.
+            </p>
+          ) : null}
+          {lastResult.failed.length > 0 ? (
+            <div className="admin-gallery-upload__result-fail">
+              <p className="flex items-center gap-1.5 text-red-400 text-xs font-medium">
+                <XCircle size={14} />
+                {lastResult.failed.length} could not be added:
+              </p>
+              <ul className="mt-1 space-y-0.5 text-xs text-red-300/90">
+                {lastResult.failed.map((item) => (
+                  <li key={`${item.name}-${item.error}`}>
+                    {item.name}: {item.error}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

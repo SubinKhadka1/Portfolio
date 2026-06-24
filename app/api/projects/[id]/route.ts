@@ -63,6 +63,16 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     return NextResponse.json(project);
   }
 
+  let mergedMetadata = body.metadata;
+  if (body.metadata !== undefined) {
+    const { data: existing } = await supabase
+      .from("projects")
+      .select("metadata")
+      .eq("id", id)
+      .single();
+    mergedMetadata = { ...(existing?.metadata as object), ...body.metadata };
+  }
+
   const { data, error } = await supabase
     .from("projects")
     .update({
@@ -75,7 +85,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       ...(body.featured !== undefined && { featured: body.featured }),
       ...(body.published !== undefined && { published: body.published }),
       ...(body.sort_order !== undefined && { sort_order: body.sort_order }),
-      ...(body.metadata !== undefined && { metadata: body.metadata }),
+      ...(mergedMetadata !== undefined && { metadata: mergedMetadata }),
     })
     .eq("id", id)
     .select("*, categories(*)")

@@ -24,7 +24,9 @@ export function groupProjectsForGalleryAdmin(
 
   const sections = sortedCategories.map((category) => ({
     category,
-    designs: sortGalleryProjects(visible.filter((p) => p.category_id === category.id)),
+    designs: sortGalleryProjects(
+      visible.filter((p) => p.category_id === category.id)
+    ),
   }));
 
   const unassigned = sortGalleryProjects(

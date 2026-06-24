@@ -321,16 +321,38 @@ export default function GalleryManager({
     }
   }
 
-  async function assignToSection(project: Project, categoryId: string | null) {
+  async function moveToUnassigned(project: Project) {
     setBusy(true);
     setError("");
     try {
       await updateProject(project.id, {
-        category_id: categoryId,
+        category_id: null,
         metadata: { ...project.metadata, showInGallery: true },
       });
-      setMessage("Design updated.");
-      router.refresh();
+      setMessage("Moved to Unassigned.");
+      await refetchAll();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to move design");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function assignToSection(project: Project, categoryId: string) {
+    if (project.category_id === categoryId) return;
+
+    setBusy(true);
+    setError("");
+    try {
+      const updated = await updateProject(project.id, {
+        category_id: categoryId,
+        metadata: { ...project.metadata, showInGallery: true, showOnHomepage: false },
+      });
+      if (updated.category_id !== categoryId) {
+        throw new Error("Section assignment did not save. Please try again.");
+      }
+      setMessage(`Added to this section only. Drag to reorder when ready.`);
+      await refetchAll();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to assign design");
     } finally {
@@ -437,7 +459,7 @@ export default function GalleryManager({
 
       await updateProject(project.id, {
         category_id: targetCategoryId,
-        metadata: { ...project.metadata, showInGallery: true },
+        metadata: { ...project.metadata, showInGallery: true, showOnHomepage: false },
       });
 
       setProjects((prev) =>
@@ -457,19 +479,40 @@ export default function GalleryManager({
     }
   }
 
-  function handleDesignsCreated(created: Project[]) {
-    setProjects((prev) => [...prev, ...created]);
-    setMessage(
-      created.length === 1
-        ? "Design uploaded to section."
-        : `${created.length} designs uploaded to section.`
-    );
-    void refetchAll();
+  function handleUploadComplete(
+    categoryId: string,
+    result: { created: Project[]; failed: { name: string; error: string }[] }
+  ) {
+    if (result.created.length) {
+      setProjects((prev) => {
+        const ids = new Set(result.created.map((p) => p.id));
+        const others = prev.filter((p) => !ids.has(p.id));
+        return [...others, ...result.created.map((p) => ({ ...p, category_id: categoryId }))];
+      });
+    }
+
+    if (result.created.length && !result.failed.length) {
+      setMessage(
+        result.created.length === 1
+          ? "1 design uploaded to this section. Drag to reorder if needed."
+          : `${result.created.length} designs uploaded to this section. Drag to reorder if needed.`
+      );
+      setError("");
+    } else if (result.created.length && result.failed.length) {
+      setMessage(`${result.created.length} added. ${result.failed.length} failed — see upload box for details.`);
+      setError("");
+    } else if (result.failed.length) {
+      setError(result.failed[0]?.error || "Upload failed");
+    }
+
+    if (result.created.length) {
+      void refetchAll();
+    }
   }
 
-  function assignableDesigns(sectionId: string) {
+  function unassignedDesigns() {
     return projects.filter(
-      (p) => p.metadata?.showInGallery !== false && p.category_id !== sectionId
+      (p) => p.metadata?.showInGallery !== false && !p.category_id
     );
   }
 
@@ -520,6 +563,9 @@ export default function GalleryManager({
                   className="admin-input font-semibold"
                   placeholder="Section title"
                 />
+                <p className="text-zinc-500 text-xs">
+                  {designs.length} design{designs.length === 1 ? "" : "s"} in this section only
+                </p>
                 <textarea
                   value={cat.description || ""}
                   onChange={(e) =>
@@ -588,40 +634,41 @@ export default function GalleryManager({
             <SectionDesignUpload
               categoryId={cat.id}
               categoryName={cat.name}
-              nextSortOrder={nextGallerySortOrder(designs)}
+              startSortOrder={nextGallerySortOrder(designs)}
               disabled={busy}
-              onCreated={handleDesignsCreated}
-              onError={setError}
+              onComplete={(result) => handleUploadComplete(cat.id, result)}
             />
 
-            <p className="text-zinc-500 text-xs mt-4 mb-2">Or choose an existing design</p>
-            {assignableDesigns(cat.id).length === 0 ? (
-              <p className="text-zinc-500 text-sm">
-                No other designs available.{" "}
-                <Link href="/admin/projects/new?type=design" className="text-purple-400 hover:underline">
-                  Upload a new design
-                </Link>
-              </p>
+            {unassignedDesigns().length > 0 ? (
+              <>
+                <p className="text-zinc-500 text-xs mt-4 mb-2">
+                  Or pick an unassigned design to add here
+                </p>
+                <div className="admin-gallery-picker__grid">
+                  {unassignedDesigns().map((project) => (
+                    <button
+                      key={project.id}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => assignToSection(project, cat.id)}
+                      className="admin-gallery-picker__item"
+                      style={{
+                        width: 88 * galleryWidthOverHeight(project),
+                        height: 88,
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={project.media_url} alt={project.title} className="admin-gallery-picker__img" />
+                      <span className="admin-gallery-picker__label">{project.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
             ) : (
-              <div className="admin-gallery-picker__grid">
-                {assignableDesigns(cat.id).map((project) => (
-                  <button
-                    key={project.id}
-                    type="button"
-                    disabled={busy}
-                    onClick={() => assignToSection(project, cat.id)}
-                    className="admin-gallery-picker__item"
-                    style={{
-                      width: 88 * galleryWidthOverHeight(project),
-                      height: 88,
-                    }}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={project.media_url} alt={project.title} className="admin-gallery-picker__img" />
-                    <span className="admin-gallery-picker__label">{project.title}</span>
-                  </button>
-                ))}
-              </div>
+              <p className="text-zinc-500 text-xs mt-4">
+                No unassigned designs. Upload new images above, or drag a design here from another
+                section.
+              </p>
             )}
           </div>
         ) : null}
@@ -649,10 +696,9 @@ export default function GalleryManager({
                   <SectionDesignUpload
                     categoryId={cat.id}
                     categoryName={cat.name}
-                    nextSortOrder={1_000}
+                    startSortOrder={1_000}
                     disabled={busy}
-                    onCreated={handleDesignsCreated}
-                    onError={setError}
+                    onComplete={(result) => handleUploadComplete(cat.id, result)}
                   />
                   <button
                     type="button"
@@ -686,7 +732,13 @@ export default function GalleryManager({
                     currentCategoryId={cat?.id ?? null}
                     isDragging={isDragging}
                     dropHint={dropHint}
-                    onAssignCategory={(categoryId) => assignToSection(project, categoryId)}
+                    onAssignCategory={(categoryId) => {
+                      if (!categoryId) {
+                        void moveToUnassigned(project);
+                      } else if (categoryId !== cat?.id) {
+                        void assignToSection(project, categoryId);
+                      }
+                    }}
                     onHide={() => hideFromGallery(project)}
                     onDragStart={() =>
                       setDrag({ projectId: project.id, sectionId, index })
@@ -738,9 +790,9 @@ export default function GalleryManager({
           <div>
             <h2 className="text-white font-semibold text-lg">Live gallery preview</h2>
             <p className="text-zinc-500 text-sm mt-1 max-w-2xl">
-              Sections below match the white <span className="text-zinc-300">/designs</span> page —
-              same layout and image proportions. Drag the grip handle on a design to reorder or move
-              it to another slot. Upload images directly into each section.
+              Each design lives in <span className="text-zinc-300">one section only</span>. Upload or
+              add to Food Menu, Flyers, etc. — then drag the grip handle to reorder. Use the section
+              dropdown on a card to move it elsewhere.
             </p>
             <div className="mt-3 text-sm text-zinc-400 space-y-1">
               <p>
