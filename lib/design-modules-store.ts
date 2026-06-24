@@ -120,6 +120,11 @@ export async function createLocalGalleryDesign(
   let created!: GalleryDesign;
 
   await updatePortfolioStore((store) => {
+    const existing = store.gallery_designs.find((d) => d.id === id);
+    if (existing) {
+      created = existing;
+      return;
+    }
     created = appendGalleryDesign(store, input, id, now);
   }, { verifyGalleryId: id });
 
@@ -133,16 +138,20 @@ export async function createLocalGalleryDesignsBatch(
   if (inputs.length === 1) return [await createLocalGalleryDesign(inputs[0])];
 
   const now = new Date().toISOString();
+  const planned = inputs.map((input) => ({ id: randomUUID(), input }));
   const created: GalleryDesign[] = [];
-  const ids: string[] = [];
 
   await updatePortfolioStore((store) => {
-    for (const input of inputs) {
-      const id = randomUUID();
-      ids.push(id);
+    created.length = 0;
+    for (const { id, input } of planned) {
+      const existing = store.gallery_designs.find((d) => d.id === id);
+      if (existing) {
+        created.push(existing);
+        continue;
+      }
       created.push(appendGalleryDesign(store, input, id, now));
     }
-  }, { verifyGalleryIds: ids });
+  }, { verifyGalleryIds: planned.map((p) => p.id) });
 
   return created;
 }

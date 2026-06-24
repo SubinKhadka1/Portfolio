@@ -1012,9 +1012,17 @@ body {
 
 .design-gallery-lightbox__panel {
   position: relative;
-  width: min(92vw, 520px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: min(96vw, 920px);
   max-height: 90vh;
-  overflow: auto;
+  overflow: hidden;
+  scrollbar-width: none;
+}
+
+.design-gallery-lightbox__panel::-webkit-scrollbar {
+  display: none;
 }
 
 .design-gallery-lightbox__close {
@@ -1034,7 +1042,8 @@ body {
 }
 
 .design-gallery-lightbox__frame {
-  width: 100%;
+  display: block;
+  line-height: 0;
   border-radius: 0.9rem;
   overflow: hidden;
   background: #111;
@@ -1042,10 +1051,12 @@ body {
 }
 
 .design-gallery-lightbox__img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
   display: block;
+  max-width: min(96vw, 920px);
+  max-height: calc(90vh - 3.5rem);
+  width: auto;
+  height: auto;
+  object-fit: contain;
   background: #0a0a0a;
 }
 

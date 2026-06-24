@@ -7,7 +7,6 @@ import Link from "next/link";
 import type { DesignItem } from "@/lib/types/database";
 import type { DesignGallerySection } from "@/lib/design-gallery";
 import DesignGalleryJustifiedGrid from "@/components/DesignGalleryJustifiedGrid";
-import { designDisplayAspectRatio } from "@/lib/design-image";
 
 function GalleryCard({
   design,
@@ -117,15 +116,14 @@ function GallerySection({
               >
                 <X size={18} />
               </button>
-              <div
-                className="design-gallery-lightbox__frame"
-                style={{ aspectRatio: designDisplayAspectRatio(activeDesign) }}
-              >
+              <div className="design-gallery-lightbox__frame">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={activeDesign.image}
                   alt={activeDesign.title}
                   className="design-gallery-lightbox__img"
+                  width={activeDesign.imageWidth}
+                  height={activeDesign.imageHeight}
                 />
               </div>
               <p className="design-gallery-lightbox__caption">{activeDesign.title}</p>

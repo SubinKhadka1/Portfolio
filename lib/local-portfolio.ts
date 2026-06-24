@@ -310,7 +310,7 @@ async function updatePortfolioStore(
   ];
   const needsVerify =
     idsToVerify.length > 0 || galleryIds.length > 0 || homepageIds.length > 0;
-  const maxAttempts = needsVerify && isBlobStorageEnabled() ? 8 : 4;
+  const maxAttempts = needsVerify && isBlobStorageEnabled() ? 12 : 4;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const store = cloneStore(await loadPortfolioStore());
@@ -319,18 +319,33 @@ async function updatePortfolioStore(
 
     if (!needsVerify) return store;
 
-    const delayMs = isBlobStorageEnabled() ? 250 * (attempt + 1) : 120 * (attempt + 1);
+    const delayMs = isBlobStorageEnabled() ? 350 * (attempt + 1) : 120 * (attempt + 1);
     await sleep(delayMs);
-    try {
-      const check = await loadPortfolioStore();
-      const projectOk = idsToVerify.every((id) => storeHasId(check, id));
-      const galleryOk = galleryIds.every((id) => storeHasGalleryId(check, id));
-      const homepageOk = homepageIds.every((id) => storeHasHomepageId(check, id));
-      if (projectOk && galleryOk && homepageOk) return store;
-      lastError = new Error("New item did not persist. Retrying save...");
-    } catch (err) {
-      lastError = err instanceof Error ? err : new Error("Save verification failed");
+
+    let verified = false;
+    for (let readAttempt = 0; readAttempt < 6; readAttempt++) {
+      try {
+        const check = await loadPortfolioStore();
+        const projectOk =
+          idsToVerify.length === 0 || idsToVerify.every((id) => storeHasId(check, id));
+        const galleryOk =
+          galleryIds.length === 0 || galleryIds.every((id) => storeHasGalleryId(check, id));
+        const homepageOk =
+          homepageIds.length === 0 || homepageIds.every((id) => storeHasHomepageId(check, id));
+        if (projectOk && galleryOk && homepageOk) {
+          verified = true;
+          break;
+        }
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error("Save verification failed");
+      }
+      if (readAttempt < 5) {
+        await sleep(isBlobStorageEnabled() ? 200 * (readAttempt + 1) : 80);
+      }
     }
+
+    if (verified) return store;
+    lastError = new Error("New item did not persist. Retrying save...");
   }
 
   throw lastError ?? new Error("Failed to save portfolio after multiple attempts");
@@ -449,6 +464,13 @@ export async function createLocalProject(input: ProjectInput): Promise<Project> 
   let project!: Project;
 
   await updatePortfolioStore((store) => {
+    for (const type of ["design", "video", "client"] as ProjectType[]) {
+      const found = store[type].find((p) => p.id === projectId);
+      if (found) {
+        project = found;
+        return;
+      }
+    }
     project = appendProjectToStore(store, input, projectId, now);
   }, { verifyId: projectId });
 
@@ -461,16 +483,24 @@ export async function createLocalProjectsBatch(inputs: ProjectInput[]): Promise<
   if (inputs.length === 1) return [await createLocalProject(inputs[0])];
 
   const now = new Date().toISOString();
+  const planned = inputs.map((input) => ({ id: randomUUID(), input }));
   const projects: Project[] = [];
-  const ids: string[] = [];
 
   await updatePortfolioStore((store) => {
-    for (const input of inputs) {
-      const projectId = randomUUID();
-      ids.push(projectId);
-      projects.push(appendProjectToStore(store, input, projectId, now));
+    projects.length = 0;
+    for (const { id, input } of planned) {
+      let existing: Project | undefined;
+      for (const type of ["design", "video", "client"] as ProjectType[]) {
+        existing = store[type].find((p) => p.id === id);
+        if (existing) break;
+      }
+      if (existing) {
+        projects.push(existing);
+        continue;
+      }
+      projects.push(appendProjectToStore(store, input, id, now));
     }
-  }, { verifyIds: ids });
+  }, { verifyIds: planned.map((p) => p.id) });
 
   return projects;
 }
