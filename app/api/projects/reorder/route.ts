@@ -6,6 +6,10 @@ import { tryCreateClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { revalidateLiveSite } from "@/lib/revalidate-site";
 
+const NO_STORE_HEADERS = {
+  "Cache-Control": "private, no-store, no-cache, must-revalidate",
+};
+
 export async function PATCH(request: NextRequest) {
   try {
     await requireAdminUser();
@@ -28,14 +32,14 @@ export async function PATCH(request: NextRequest) {
     if (!isSupabaseConfigured()) {
       await reorderLocalProjects(items);
       revalidateLiveSite();
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true }, { headers: NO_STORE_HEADERS });
     }
 
     const supabase = await tryCreateClient();
     if (!supabase) {
       await reorderLocalProjects(items);
       revalidateLiveSite();
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true }, { headers: NO_STORE_HEADERS });
     }
 
     for (const item of items) {
@@ -51,7 +55,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     revalidateLiveSite();
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers: NO_STORE_HEADERS });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to save order";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -299,8 +299,7 @@ export async function createLocalProject(input: ProjectInput): Promise<Project> 
       const inRow = store[type].filter(
         (p) => clampMarqueeRow(p.metadata?.marqueeRow ?? 1) === row
       );
-      const maxInRow = inRow.reduce((max, p) => Math.max(max, p.sort_order), row * 1000 - 1);
-      sortOrder = maxInRow + 1;
+      sortOrder = marqueeSortOrder(row, inRow.length);
     }
 
     project = {

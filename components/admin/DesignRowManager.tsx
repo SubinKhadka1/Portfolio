@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import {
   clampMarqueeRow,
+  clampMarqueeRows,
   groupProjectsByMarqueeRow,
   marqueeSortOrder,
 } from "@/lib/marquee";
@@ -173,15 +174,29 @@ export default function DesignRowManager({
   portfolioRows: number;
 }) {
   const router = useRouter();
-  const rowCount = clampMarqueeRow(portfolioRows, 3);
+  const rowCount = clampMarqueeRows(portfolioRows);
   const [projects, setProjects] = useState(initial);
   const [drag, setDrag] = useState<{ row: number; index: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setProjects(initial);
-  }, [initial]);
+    if (!busy) setProjects(initial);
+  }, [initial, busy]);
+
+  async function refetchProjects() {
+    const res = await fetch("/api/projects?type=design&admin=true", {
+      cache: "no-store",
+    });
+    const data = await parseResponseJson<Project[] | { error?: string }>(res);
+    if (!res.ok || !Array.isArray(data)) {
+      throw new Error(
+        !Array.isArray(data) && data.error ? data.error : "Failed to refresh designs"
+      );
+    }
+    setProjects(data);
+    return data;
+  }
 
   const rowGroups = useMemo(
     () => groupProjectsByMarqueeRow(projects, rowCount),
@@ -193,11 +208,13 @@ export default function DesignRowManager({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items }),
+      cache: "no-store",
     });
     const data = await parseResponseJson<{ error?: string }>(res);
     if (!res.ok) {
       throw new Error(data.error || "Failed to save design order");
     }
+    await refetchProjects();
     router.refresh();
   }
 
@@ -287,7 +304,11 @@ export default function DesignRowManager({
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
-      setProjects(initial);
+      try {
+        await refetchProjects();
+      } catch {
+        setProjects(initial);
+      }
     } finally {
       setBusy(false);
       setDrag(null);
@@ -317,7 +338,11 @@ export default function DesignRowManager({
       ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
-      setProjects(initial);
+      try {
+        await refetchProjects();
+      } catch {
+        setProjects(initial);
+      }
     } finally {
       setBusy(false);
     }
@@ -352,6 +377,8 @@ export default function DesignRowManager({
           <section
             key={rowIndex}
             className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => handleDrop(rowIndex, rowProjects.length)}
           >
             <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-4 py-3 border-b border-zinc-800 bg-zinc-900/80">
               <div className="min-w-0 flex-1">
@@ -384,7 +411,11 @@ export default function DesignRowManager({
                 <AddToRowButton row={rowNum} variant="empty" />
               </div>
             ) : (
-              <div className="design-row-scroll p-2 sm:p-3">
+              <div
+                className="design-row-scroll p-2 sm:p-3"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => handleDrop(rowIndex, rowProjects.length)}
+              >
                 <div className="design-row-track">
                   {rowProjects.map((project, index) => (
                     <DesignRowCard

@@ -38,7 +38,7 @@ export function clampMarqueeRow(value: number, maxRows = 3) {
 }
 
 export function marqueeSortOrder(row: number, index: number) {
-  return clampMarqueeRow(row) * 1000 + index;
+  return clampMarqueeRow(row) * 1_000_000 + index;
 }
 
 type RowAssignable = {

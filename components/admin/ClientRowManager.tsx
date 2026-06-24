@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import {
   clampMarqueeRow,
+  clampMarqueeRows,
   groupProjectsByMarqueeRow,
   marqueeSortOrder,
 } from "@/lib/marquee";
@@ -166,15 +167,29 @@ export default function ClientRowManager({
   clientRows: number;
 }) {
   const router = useRouter();
-  const rowCount = clampMarqueeRow(clientRows, 3);
+  const rowCount = clampMarqueeRows(clientRows);
   const [projects, setProjects] = useState(initial);
   const [drag, setDrag] = useState<{ row: number; index: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setProjects(initial);
-  }, [initial]);
+    if (!busy) setProjects(initial);
+  }, [initial, busy]);
+
+  async function refetchProjects() {
+    const res = await fetch("/api/projects?type=client&admin=true", {
+      cache: "no-store",
+    });
+    const data = await parseResponseJson<Project[] | { error?: string }>(res);
+    if (!res.ok || !Array.isArray(data)) {
+      throw new Error(
+        !Array.isArray(data) && data.error ? data.error : "Failed to refresh clients"
+      );
+    }
+    setProjects(data);
+    return data;
+  }
 
   const rowGroups = useMemo(
     () => groupProjectsByMarqueeRow(projects, rowCount),
@@ -186,11 +201,13 @@ export default function ClientRowManager({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items }),
+      cache: "no-store",
     });
     const data = await parseResponseJson<{ error?: string }>(res);
     if (!res.ok) {
       throw new Error(data.error || "Failed to save client order");
     }
+    await refetchProjects();
     router.refresh();
   }
 
@@ -280,7 +297,11 @@ export default function ClientRowManager({
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
-      setProjects(initial);
+      try {
+        await refetchProjects();
+      } catch {
+        setProjects(initial);
+      }
     } finally {
       setBusy(false);
       setDrag(null);
@@ -310,7 +331,11 @@ export default function ClientRowManager({
       ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
-      setProjects(initial);
+      try {
+        await refetchProjects();
+      } catch {
+        setProjects(initial);
+      }
     } finally {
       setBusy(false);
     }

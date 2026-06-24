@@ -10,6 +10,20 @@ import type { ProjectInput, ProjectType } from "@/lib/types/database";
 import { parseRequestJson } from "@/lib/parse-response";
 import { revalidateLiveSite } from "@/lib/revalidate-site";
 
+const NO_STORE_HEADERS = {
+  "Cache-Control": "private, no-store, no-cache, must-revalidate",
+};
+
+function jsonResponse(data: unknown, init?: ResponseInit) {
+  return NextResponse.json(data, {
+    ...init,
+    headers: {
+      ...NO_STORE_HEADERS,
+      ...(init?.headers || {}),
+    },
+  });
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type") as ProjectType | null;
@@ -27,7 +41,7 @@ export async function GET(request: NextRequest) {
     if (type) {
       const projects = await getLocalProjects(type);
       const filtered = !admin ? projects.filter((p) => p.published) : projects;
-      return NextResponse.json(filtered);
+      return admin ? jsonResponse(filtered) : NextResponse.json(filtered);
     }
 
     const all = await Promise.all(
@@ -35,7 +49,7 @@ export async function GET(request: NextRequest) {
     );
     let projects = all.flat();
     if (!admin) projects = projects.filter((p) => p.published);
-    return NextResponse.json(projects);
+    return admin ? jsonResponse(projects) : NextResponse.json(projects);
   }
 
   const supabase = await tryCreateClient();
@@ -81,14 +95,14 @@ export async function POST(request: NextRequest) {
     if (!isSupabaseConfigured()) {
       const project = await createLocalProject(body);
       revalidateLiveSite();
-      return NextResponse.json(project, { status: 201 });
+      return jsonResponse(project, { status: 201 });
     }
 
     const supabase = await tryCreateClient();
     if (!supabase) {
       const project = await createLocalProject(body);
       revalidateLiveSite();
-      return NextResponse.json(project, { status: 201 });
+      return jsonResponse(project, { status: 201 });
     }
 
     const { data: maxOrder } = await supabase
