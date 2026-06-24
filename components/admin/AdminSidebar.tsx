@@ -20,7 +20,7 @@ import { useState } from "react";
 const links = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/projects?type=design", label: "Designs", icon: Image },
-  { href: "/admin/categories", label: "Gallery Categories", icon: FolderOpen },
+  { href: "/admin/categories", label: "Design Gallery", icon: FolderOpen },
   { href: "/admin/projects?type=video", label: "Videos", icon: Video },
   { href: "/admin/projects?type=client", label: "Clients", icon: Users },
   { href: "/admin/settings", label: "Site Settings", icon: Settings },

@@ -26,6 +26,7 @@ export async function PATCH(request: NextRequest) {
     }
     items = body.items;
     if (body.scope === "homepage") scope = "homepage";
+    if (body.scope === "gallery") scope = "gallery";
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }

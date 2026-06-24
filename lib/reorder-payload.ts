@@ -8,7 +8,7 @@ export type ReorderItem = {
   metadata?: Project["metadata"];
 };
 
-export type ReorderScope = "homepage" | "default";
+export type ReorderScope = "homepage" | "gallery" | "default";
 
 export function buildReorderItems(rowProjects: Project[], row: number): ReorderItem[] {
   const rowNum = clampMarqueeRow(row) as 1 | 2 | 3;
@@ -29,6 +29,18 @@ export function buildHomepageReorderItems(rowProjects: Project[], row: number): 
       marqueeRow: rowNum,
       homepageSortOrder: homepageSortValue(rowNum, index),
       showOnHomepage: true,
+    },
+  }));
+}
+
+/** Design gallery page — only updates gallery sort order. */
+export function buildGalleryReorderItems(sectionProjects: Project[]): ReorderItem[] {
+  return sectionProjects.map((p, index) => ({
+    id: p.id,
+    metadata: {
+      ...p.metadata,
+      gallerySortOrder: (index + 1) * 1_000,
+      showInGallery: true,
     },
   }));
 }

@@ -450,7 +450,7 @@ export async function deleteLocalProject(id: string): Promise<boolean> {
 
 export async function reorderLocalProjects(
   items: { id: string; sort_order?: number; metadata?: Project["metadata"] }[],
-  scope: "homepage" | "default" = "default"
+  scope: "homepage" | "gallery" | "default" = "default"
 ): Promise<void> {
   const itemMap = new Map(items.map((i) => [i.id, i]));
 
