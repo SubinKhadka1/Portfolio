@@ -13,6 +13,16 @@ export function showsGalleryDesign(design: GalleryDesign) {
   return design.metadata?.galleryHidden !== true;
 }
 
+export function galleryDesignToLayoutItem(design: GalleryDesign) {
+  return {
+    id: design.id,
+    imageWidth: design.metadata?.imageWidth,
+    imageHeight: design.metadata?.imageHeight,
+    aspectRatio: design.metadata?.aspectRatio,
+    metadata: design.metadata,
+  };
+}
+
 export function projectToGalleryDesign(project: Project): GalleryDesign {
   const now = new Date().toISOString();
   return {

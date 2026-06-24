@@ -1,5 +1,4 @@
-import { prepareDesignUpload } from "@/lib/compress-design-image";
-import { detectDesignDimensionsFromUrl } from "@/lib/design-image";
+import { prepareGalleryDesignUpload } from "@/lib/compress-design-image";
 import { parseResponseJson } from "@/lib/parse-response";
 import type { GalleryDesign, GalleryDesignInput } from "@/lib/types/database";
 
@@ -10,32 +9,25 @@ export function titleFromMediaUrl(url: string) {
   return withoutTimestamp.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export async function uploadDesignFile(file: File): Promise<string> {
-  const prepared = await prepareDesignUpload(file);
-  const formData = new FormData();
-  formData.append("file", prepared.file);
-  formData.append("type", "design");
-
-  const res = await fetch("/api/upload", { method: "POST", body: formData });
-  const data = await parseResponseJson<{ url?: string; error?: string }>(res);
-  if (!res.ok || !data.url) {
-    throw new Error(data.error || `Upload failed for ${file.name}`);
-  }
-  return data.url;
-}
+type PreparedUpload = {
+  file: File;
+  width: number;
+  height: number;
+  aspectRatio: "square" | "portrait";
+};
 
 function buildGalleryDesignPayload({
   mediaUrl,
   categoryId,
   sortOrder,
   title,
-  detected,
+  prepared,
 }: {
   mediaUrl: string;
   categoryId: string;
   sortOrder: number;
   title?: string;
-  detected: Awaited<ReturnType<typeof detectDesignDimensionsFromUrl>>;
+  prepared: PreparedUpload;
 }): GalleryDesignInput {
   return {
     title: title?.trim() || titleFromMediaUrl(mediaUrl),
@@ -46,33 +38,41 @@ function buildGalleryDesignPayload({
     sort_order: sortOrder,
     metadata: {
       color: "from-purple-700 to-indigo-900",
-      aspectRatio: detected.aspectRatio,
-      imageWidth: detected.width,
-      imageHeight: detected.height,
+      aspectRatio: prepared.aspectRatio,
+      imageWidth: prepared.width,
+      imageHeight: prepared.height,
     },
   };
 }
 
-export async function createGalleryDesign({
-  mediaUrl,
-  categoryId,
-  sortOrder,
-  title,
-}: {
-  mediaUrl: string;
-  categoryId: string;
-  sortOrder: number;
-  title?: string;
-}): Promise<GalleryDesign> {
-  const detected = await detectDesignDimensionsFromUrl(mediaUrl);
-  const payload = buildGalleryDesignPayload({
-    mediaUrl,
-    categoryId,
-    sortOrder,
-    title,
-    detected,
-  });
+export async function uploadDesignFile(file: File): Promise<{
+  url: string;
+  width: number;
+  height: number;
+  aspectRatio: "square" | "portrait";
+}> {
+  const prepared = await prepareGalleryDesignUpload(file);
+  const formData = new FormData();
+  formData.append("file", prepared.file);
+  formData.append("type", "design");
 
+  const res = await fetch("/api/upload", { method: "POST", body: formData });
+  const data = await parseResponseJson<{ url?: string; error?: string }>(res);
+  if (!res.ok || !data.url) {
+    throw new Error(data.error || `Upload failed for ${file.name}`);
+  }
+  return {
+    url: data.url,
+    width: prepared.width,
+    height: prepared.height,
+    aspectRatio: prepared.aspectRatio,
+  };
+}
+
+async function saveGalleryDesignPayload(
+  payload: GalleryDesignInput,
+  categoryId: string
+): Promise<GalleryDesign> {
   const res = await fetch("/api/gallery-designs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -126,14 +126,23 @@ export async function uploadDesignsToSection({
   onProgress?: (message: string) => void;
 }): Promise<SectionUploadResult> {
   const failed: { name: string; error: string }[] = [];
-  const uploaded: { file: File; url: string }[] = [];
+  const staged: { file: File; url: string; prepared: PreparedUpload }[] = [];
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     onProgress?.(`Uploading image ${i + 1} of ${files.length}…`);
     try {
-      const url = await uploadDesignFile(file);
-      uploaded.push({ file, url });
+      const uploaded = await uploadDesignFile(file);
+      staged.push({
+        file,
+        url: uploaded.url,
+        prepared: {
+          file,
+          width: uploaded.width,
+          height: uploaded.height,
+          aspectRatio: uploaded.aspectRatio,
+        },
+      });
     } catch (err) {
       failed.push({
         name: file.name,
@@ -142,51 +151,44 @@ export async function uploadDesignsToSection({
     }
   }
 
-  if (uploaded.length === 0) {
+  if (staged.length === 0) {
     return { created: [], failed };
   }
 
-  onProgress?.(`Preparing ${uploaded.length} design${uploaded.length === 1 ? "" : "s"}…`);
+  onProgress?.(`Saving ${staged.length} design${staged.length === 1 ? "" : "s"} to section…`);
 
-  const payloads: { file: File; payload: GalleryDesignInput }[] = [];
-  for (let i = 0; i < uploaded.length; i++) {
-    const { file, url } = uploaded[i];
+  const payloads = staged.map((entry, index) =>
+    buildGalleryDesignPayload({
+      mediaUrl: entry.url,
+      categoryId,
+      sortOrder: startSortOrder + index * 1_000,
+      prepared: entry.prepared,
+    })
+  );
+
+  const created: GalleryDesign[] = [];
+
+  if (payloads.length > 1) {
     try {
-      const detected = await detectDesignDimensionsFromUrl(url);
-      payloads.push({
-        file,
-        payload: buildGalleryDesignPayload({
-          mediaUrl: url,
-          categoryId,
-          sortOrder: startSortOrder + i * 1_000,
-          detected,
-        }),
-      });
+      const batch = await createGalleryDesignsBatch(payloads, categoryId);
+      return { created: batch, failed };
+    } catch {
+      onProgress?.("Batch save failed — saving designs one at a time…");
+    }
+  }
+
+  for (let i = 0; i < payloads.length; i++) {
+    const { file } = staged[i];
+    try {
+      const design = await saveGalleryDesignPayload(payloads[i], categoryId);
+      created.push(design);
     } catch (err) {
       failed.push({
         name: file.name,
-        error: err instanceof Error ? err.message : "Could not read image size",
+        error: err instanceof Error ? err.message : "Could not add to section",
       });
     }
   }
 
-  if (payloads.length === 0) {
-    return { created: [], failed };
-  }
-
-  onProgress?.(`Saving ${payloads.length} design${payloads.length === 1 ? "" : "s"} to section…`);
-
-  try {
-    const created = await createGalleryDesignsBatch(
-      payloads.map((entry) => entry.payload),
-      categoryId
-    );
-    return { created, failed };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Could not add to section";
-    for (const { file } of payloads) {
-      failed.push({ name: file.name, error: message });
-    }
-    return { created: [], failed };
-  }
+  return { created, failed };
 }

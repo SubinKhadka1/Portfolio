@@ -22,6 +22,7 @@ import DesignGalleryJustifiedGrid from "@/components/DesignGalleryJustifiedGrid"
 import SectionDesignUpload from "@/components/admin/SectionDesignUpload";
 import { buildGalleryDesignReorderItems } from "@/lib/reorder-payload";
 import { groupDesignsForGalleryAdmin } from "@/lib/gallery-admin";
+import { galleryDesignToLayoutItem } from "@/lib/design-module-mappers";
 import { galleryWidthOverHeight } from "@/lib/design-gallery-layout";
 import { parseResponseJson } from "@/lib/parse-response";
 import type { Category, GalleryDesign } from "@/lib/types/database";
@@ -92,7 +93,8 @@ function GalleryDesignCard({
     <article
       draggable={!busy}
       onDragStart={(e) => {
-        if (!(e.target as HTMLElement).closest("[data-gallery-drag-handle]")) {
+        const target = e.target as HTMLElement;
+        if (target.closest("button, select, a, input, textarea")) {
           e.preventDefault();
           return;
         }
@@ -820,8 +822,9 @@ export default function GalleryManager({
             </div>
           ) : (
             <DesignGalleryJustifiedGrid
-              items={sectionDesigns.map((d) => ({ ...d, metadata: d.metadata }))}
+              items={sectionDesigns.map(galleryDesignToLayoutItem)}
               renderCard={(item, { height }) => {
+                const design = sectionDesigns.find((d) => d.id === item.id)!;
                 const index = sectionDesigns.findIndex((d) => d.id === item.id);
                 const isDragging = drag?.projectId === item.id;
                 const dropHint =
@@ -832,7 +835,7 @@ export default function GalleryManager({
                 return (
                   <GalleryDesignCard
                     key={item.id}
-                    design={item}
+                    design={design}
                     busy={busy}
                     height={height}
                     categories={categories}
@@ -841,17 +844,17 @@ export default function GalleryManager({
                     dropHint={dropHint}
                     onAssignCategory={(categoryId) => {
                       if (!categoryId) {
-                        void moveToUnassigned(item);
+                        void moveToUnassigned(design);
                       } else if (categoryId !== cat?.id) {
-                        void assignToSection(item, categoryId);
+                        void assignToSection(design, categoryId);
                       }
                     }}
-                    onHide={() => hideFromGallery(item)}
+                    onHide={() => hideFromGallery(design)}
                     onRemoveFromSection={() =>
-                      removeFromSection(item, cat?.id ?? null, cat?.name ?? title)
+                      removeFromSection(design, cat?.id ?? null, cat?.name ?? title)
                     }
-                    onFeatureHomepage={() => featureOnHomepage(item)}
-                    onDelete={() => deleteFromGallery(item)}
+                    onFeatureHomepage={() => featureOnHomepage(design)}
+                    onDelete={() => deleteFromGallery(design)}
                     onDragStart={() =>
                       setDrag({ projectId: item.id, sectionId, index })
                     }
@@ -902,9 +905,9 @@ export default function GalleryManager({
           <div>
             <h2 className="text-white font-semibold text-lg">Live gallery preview</h2>
             <p className="text-zinc-500 text-sm mt-1 max-w-2xl">
-              Gallery CMS is independent from homepage sections. Deleting, moving, or reordering here
-              does not change Featured Flyers or the homepage marquee unless you use{" "}
-              <span className="text-zinc-300">⭐ Feature on Homepage</span>.
+              Gallery CMS is independent from homepage sections. Drag any card to reorder within a
+              section, or use the section dropdown to move it. Re-upload old designs to remove baked-in
+              white borders from earlier uploads.
             </p>
             <div className="mt-3 text-sm text-zinc-400 space-y-1">
               <p>

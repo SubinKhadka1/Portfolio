@@ -319,7 +319,12 @@ async function updatePortfolioStore(
 
     if (!needsVerify) return store;
 
-    const delayMs = isBlobStorageEnabled() ? 350 * (attempt + 1) : 120 * (attempt + 1);
+    // Blob CDN reads are eventually consistent — trust the write we just made.
+    if (isBlobStorageEnabled()) {
+      return store;
+    }
+
+    const delayMs = 120 * (attempt + 1);
     await sleep(delayMs);
 
     let verified = false;
@@ -340,7 +345,7 @@ async function updatePortfolioStore(
         lastError = err instanceof Error ? err : new Error("Save verification failed");
       }
       if (readAttempt < 5) {
-        await sleep(isBlobStorageEnabled() ? 200 * (readAttempt + 1) : 80);
+        await sleep(80 * (readAttempt + 1));
       }
     }
 
