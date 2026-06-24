@@ -1141,10 +1141,18 @@ body {
 }
 
 .admin-gallery-preview {
-  background: #ffffff;
+  background: #09090b;
   padding: 1.35rem clamp(0.85rem, 3vw, 1.25rem) 1.5rem;
   overflow-x: hidden;
   scrollbar-width: none;
+}
+
+.admin-gallery-preview .design-gallery-section__title {
+  color: #fafafa;
+}
+
+.admin-gallery-preview .design-gallery-section__desc {
+  color: #a1a1aa;
 }
 
 .admin-gallery-preview::-webkit-scrollbar {
@@ -1173,6 +1181,35 @@ body {
     border-color 0.22s ease;
 }
 
+.admin-gallery-preview .design-gallery-natural .admin-gallery-card--natural {
+  position: relative;
+  display: inline-block;
+  width: auto;
+  height: auto;
+  margin: 0;
+  border-radius: 0.85rem;
+  overflow: hidden;
+  border: 1px solid #3f3f46;
+  background: #09090b;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  cursor: grab;
+  line-height: 0;
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
+}
+
+.admin-gallery-preview .design-gallery-natural .admin-gallery-card--natural:hover {
+  transform: translateY(-1px);
+  border-color: #52525b;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+}
+
+.admin-gallery-preview .design-gallery-natural .admin-gallery-card--natural:active {
+  cursor: grabbing;
+}
+
 .admin-gallery-preview .design-gallery-rows .admin-gallery-card:hover {
   transform: translateY(-1px);
   border-color: #52525b;
@@ -1190,6 +1227,15 @@ body {
   object-position: center;
   display: block;
   background: #09090b;
+}
+
+.admin-gallery-card--natural .admin-gallery-card__img {
+  width: auto;
+  height: auto;
+  max-width: min(100%, 420px);
+  max-height: 520px;
+  object-fit: contain;
+  vertical-align: top;
 }
 
 .admin-gallery-card__remove {

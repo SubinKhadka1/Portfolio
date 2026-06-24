@@ -214,28 +214,6 @@ function cloneStore(store: PortfolioStore): PortfolioStore {
   return JSON.parse(JSON.stringify(store)) as PortfolioStore;
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function storeHasGalleryId(store: PortfolioStore, id: string) {
-  return store.gallery_designs.some((d) => d.id === id);
-}
-
-function storeHasHomepageId(store: PortfolioStore, id: string) {
-  return store.homepage_designs.some((d) => d.id === id);
-}
-
-function storeHasId(store: PortfolioStore, id: string) {
-  return (
-    storeHasGalleryId(store, id) ||
-    storeHasHomepageId(store, id) ||
-    (["design", "video", "client"] as ProjectType[]).some((type) =>
-      store[type].some((p) => p.id === id)
-    )
-  );
-}
-
 async function loadPortfolioStore(): Promise<PortfolioStore> {
   const fromBlob = await readJsonFile<Partial<PortfolioStore>>(PORTFOLIO_JSON);
   if (fromBlob) return migrateStore(normalizePortfolioStore(fromBlob));
@@ -285,75 +263,12 @@ async function savePortfolioStore(store: PortfolioStore) {
 }
 
 async function updatePortfolioStore(
-  mutate: (store: PortfolioStore) => void | Promise<void>,
-  options?: {
-    verifyId?: string;
-    verifyIds?: string[];
-    verifyGalleryId?: string;
-    verifyGalleryIds?: string[];
-    verifyHomepageId?: string;
-    verifyHomepageIds?: string[];
-  }
+  mutate: (store: PortfolioStore) => void | Promise<void>
 ): Promise<PortfolioStore> {
-  let lastError: Error | null = null;
-  const idsToVerify = [
-    ...(options?.verifyIds ?? []),
-    ...(options?.verifyId ? [options.verifyId] : []),
-  ];
-  const galleryIds = [
-    ...(options?.verifyGalleryIds ?? []),
-    ...(options?.verifyGalleryId ? [options.verifyGalleryId] : []),
-  ];
-  const homepageIds = [
-    ...(options?.verifyHomepageIds ?? []),
-    ...(options?.verifyHomepageId ? [options.verifyHomepageId] : []),
-  ];
-  const needsVerify =
-    idsToVerify.length > 0 || galleryIds.length > 0 || homepageIds.length > 0;
-  const maxAttempts = needsVerify && isBlobStorageEnabled() ? 12 : 4;
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const store = cloneStore(await loadPortfolioStore());
-    await mutate(store);
-    await savePortfolioStore(store);
-
-    if (!needsVerify) return store;
-
-    // Blob CDN reads are eventually consistent — trust the write we just made.
-    if (isBlobStorageEnabled()) {
-      return store;
-    }
-
-    const delayMs = 120 * (attempt + 1);
-    await sleep(delayMs);
-
-    let verified = false;
-    for (let readAttempt = 0; readAttempt < 6; readAttempt++) {
-      try {
-        const check = await loadPortfolioStore();
-        const projectOk =
-          idsToVerify.length === 0 || idsToVerify.every((id) => storeHasId(check, id));
-        const galleryOk =
-          galleryIds.length === 0 || galleryIds.every((id) => storeHasGalleryId(check, id));
-        const homepageOk =
-          homepageIds.length === 0 || homepageIds.every((id) => storeHasHomepageId(check, id));
-        if (projectOk && galleryOk && homepageOk) {
-          verified = true;
-          break;
-        }
-      } catch (err) {
-        lastError = err instanceof Error ? err : new Error("Save verification failed");
-      }
-      if (readAttempt < 5) {
-        await sleep(80 * (readAttempt + 1));
-      }
-    }
-
-    if (verified) return store;
-    lastError = new Error("New item did not persist. Retrying save...");
-  }
-
-  throw lastError ?? new Error("Failed to save portfolio after multiple attempts");
+  const store = cloneStore(await loadPortfolioStore());
+  await mutate(store);
+  await savePortfolioStore(store);
+  return store;
 }
 
 export { updatePortfolioStore };
@@ -477,7 +392,7 @@ export async function createLocalProject(input: ProjectInput): Promise<Project> 
       }
     }
     project = appendProjectToStore(store, input, projectId, now);
-  }, { verifyId: projectId });
+  });
 
   return project;
 }
@@ -505,7 +420,7 @@ export async function createLocalProjectsBatch(inputs: ProjectInput[]): Promise<
       }
       projects.push(appendProjectToStore(store, input, id, now));
     }
-  }, { verifyIds: planned.map((p) => p.id) });
+  });
 
   return projects;
 }

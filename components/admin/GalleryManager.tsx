@@ -18,11 +18,10 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import DesignGalleryJustifiedGrid from "@/components/DesignGalleryJustifiedGrid";
+import DesignGalleryNaturalGrid from "@/components/DesignGalleryNaturalGrid";
 import SectionDesignUpload from "@/components/admin/SectionDesignUpload";
 import { buildGalleryDesignReorderItems } from "@/lib/reorder-payload";
 import { groupDesignsForGalleryAdmin } from "@/lib/gallery-admin";
-import { galleryDesignToLayoutItem } from "@/lib/design-module-mappers";
 import { galleryWidthOverHeight } from "@/lib/design-gallery-layout";
 import { parseResponseJson } from "@/lib/parse-response";
 import type { Category, GalleryDesign } from "@/lib/types/database";
@@ -55,7 +54,6 @@ type DragOverTarget = {
 function GalleryDesignCard({
   design,
   busy,
-  height,
   categories,
   currentCategoryId,
   isDragging,
@@ -73,7 +71,6 @@ function GalleryDesignCard({
 }: {
   design: GalleryDesign;
   busy: boolean;
-  height: number;
   categories: Category[];
   currentCategoryId: string | null;
   isDragging: boolean;
@@ -106,10 +103,9 @@ function GalleryDesignCard({
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className={`admin-gallery-card${isDragging ? " admin-gallery-card--dragging" : ""}${
+      className={`admin-gallery-card admin-gallery-card--natural${isDragging ? " admin-gallery-card--dragging" : ""}${
         dropHint === "before" ? " admin-gallery-card--drop-before" : ""
       }${dropHint === "after" ? " admin-gallery-card--drop-after" : ""}`}
-      style={{ height, width: "100%" }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -821,12 +817,10 @@ export default function GalleryManager({
               ) : null}
             </div>
           ) : (
-            <DesignGalleryJustifiedGrid
-              items={sectionDesigns.map(galleryDesignToLayoutItem)}
-              renderCard={(item, { height }) => {
-                const design = sectionDesigns.find((d) => d.id === item.id)!;
-                const index = sectionDesigns.findIndex((d) => d.id === item.id);
-                const isDragging = drag?.projectId === item.id;
+            <DesignGalleryNaturalGrid
+              items={sectionDesigns}
+              renderCard={(design, { index }) => {
+                const isDragging = drag?.projectId === design.id;
                 const dropHint =
                   dragOver?.sectionId === sectionId && dragOver.index === index
                     ? dragOver.side
@@ -834,10 +828,9 @@ export default function GalleryManager({
 
                 return (
                   <GalleryDesignCard
-                    key={item.id}
+                    key={design.id}
                     design={design}
                     busy={busy}
-                    height={height}
                     categories={categories}
                     currentCategoryId={cat?.id ?? null}
                     isDragging={isDragging}
@@ -856,7 +849,7 @@ export default function GalleryManager({
                     onFeatureHomepage={() => featureOnHomepage(design)}
                     onDelete={() => deleteFromGallery(design)}
                     onDragStart={() =>
-                      setDrag({ projectId: item.id, sectionId, index })
+                      setDrag({ projectId: design.id, sectionId, index })
                     }
                     onDragEnd={clearDrag}
                     onDragOver={(e) => {

@@ -125,8 +125,17 @@ export async function createLocalGalleryDesign(
       created = existing;
       return;
     }
+    const existingByUrl = store.gallery_designs.find(
+      (d) =>
+        d.media_url === input.media_url &&
+        (d.category_id ?? null) === (input.category_id ?? null)
+    );
+    if (existingByUrl) {
+      created = existingByUrl;
+      return;
+    }
     created = appendGalleryDesign(store, input, id, now);
-  }, { verifyGalleryId: id });
+  });
 
   return created;
 }
@@ -149,9 +158,18 @@ export async function createLocalGalleryDesignsBatch(
         created.push(existing);
         continue;
       }
+      const existingByUrl = store.gallery_designs.find(
+        (d) =>
+          d.media_url === input.media_url &&
+          (d.category_id ?? null) === (input.category_id ?? null)
+      );
+      if (existingByUrl) {
+        created.push(existingByUrl);
+        continue;
+      }
       created.push(appendGalleryDesign(store, input, id, now));
     }
-  }, { verifyGalleryIds: planned.map((p) => p.id) });
+  });
 
   return created;
 }
@@ -225,7 +243,7 @@ export async function createLocalHomepageDesign(
 
   await updatePortfolioStore((store) => {
     created = appendHomepageDesign(store, input, id, now);
-  }, { verifyHomepageId: id });
+  });
 
   return created;
 }
@@ -247,7 +265,7 @@ export async function createLocalHomepageDesignFromGallery(
     created.created_at = now;
     created.updated_at = now;
     store.homepage_designs.push(created);
-  }, { verifyHomepageId: id });
+  });
 
   return created;
 }

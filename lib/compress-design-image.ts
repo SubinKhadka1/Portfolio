@@ -99,12 +99,25 @@ async function loadImageFromFile(file: File, objectUrl: string) {
   });
 }
 
+function isPngFile(file: File) {
+  return file.type === "image/png" || /\.png$/i.test(file.name);
+}
+
 function canvasToJpegBlob(canvas: HTMLCanvasElement) {
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (result) => (result ? resolve(result) : reject(new Error("Image optimization failed"))),
       "image/jpeg",
       0.92
+    );
+  });
+}
+
+function canvasToPngBlob(canvas: HTMLCanvasElement) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (result) => (result ? resolve(result) : reject(new Error("Image optimization failed"))),
+      "image/png"
     );
   });
 }
@@ -154,12 +167,18 @@ export async function prepareGalleryDesignUpload(file: File): Promise<{
     canvas.height = height;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Could not prepare image");
+
+    const keepPng = isPngFile(file);
+    if (!keepPng) {
+      ctx.fillStyle = "#09090b";
+      ctx.fillRect(0, 0, width, height);
+    }
     ctx.drawImage(img, 0, 0, width, height);
 
-    const blob = await canvasToJpegBlob(canvas);
     const baseName = file.name.replace(/\.[^.]+$/, "").replace(/\s+/g, "-") || "design";
-    const optimizedFile = new File([blob], `${baseName}.jpg`, {
-      type: "image/jpeg",
+    const blob = keepPng ? await canvasToPngBlob(canvas) : await canvasToJpegBlob(canvas);
+    const optimizedFile = new File([blob], `${baseName}.${keepPng ? "png" : "jpg"}`, {
+      type: keepPng ? "image/png" : "image/jpeg",
       lastModified: Date.now(),
     });
 
