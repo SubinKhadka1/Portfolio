@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,11 +19,27 @@ import {
   groupProjectsByMarqueeRow,
 } from "@/lib/marquee";
 import { buildHomepageDesignReorderItems } from "@/lib/reorder-payload";
+import { homepageDesignToProjectShape } from "@/lib/design-module-mappers";
 import { homepageSortValue } from "@/lib/design-placement";
 import { parseResponseJson } from "@/lib/parse-response";
-import type { Project } from "@/lib/types/database";
+import type { HomepageDesign, Project } from "@/lib/types/database";
 
 const rowDirections = ["Scrolls left", "Scrolls right", "Scrolls left"] as const;
+
+function projectToHomepageDesign(project: Project): HomepageDesign {
+  return {
+    id: project.id,
+    title: project.title,
+    description: project.description,
+    media_url: project.media_url,
+    sort_order: project.metadata?.homepageSortOrder ?? project.sort_order,
+    published: project.published,
+    metadata: project.metadata,
+    source_gallery_design_id: null,
+    created_at: project.created_at,
+    updated_at: project.updated_at,
+  };
+}
 
 function addDesignHref(row: number) {
   return `/admin/projects/new?type=design&row=${row}`;
@@ -67,7 +82,7 @@ function DesignRowCard({
   project,
   rowIndex,
   rowCount,
-  busy,
+  cardBusy,
   onDragStart,
   onDrop,
   onMoveRow,
@@ -78,7 +93,7 @@ function DesignRowCard({
   project: Project;
   rowIndex: number;
   rowCount: number;
-  busy: boolean;
+  cardBusy: boolean;
   onDragStart: () => void;
   onDrop: () => void;
   onMoveRow: (row: number) => void;
@@ -90,7 +105,7 @@ function DesignRowCard({
 
   return (
     <article
-      draggable={!busy}
+      draggable={!cardBusy}
       onDragStart={onDragStart}
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
@@ -124,7 +139,7 @@ function DesignRowCard({
             value={clampMarqueeRow(project.metadata?.marqueeRow ?? rowIndex + 1, rowCount)}
             onChange={(e) => onMoveRow(Number(e.target.value))}
             className="admin-input admin-input-compact w-full"
-            disabled={busy}
+            disabled={cardBusy}
           >
             {Array.from({ length: rowCount }, (_, i) => (
               <option key={i + 1} value={i + 1}>
@@ -184,31 +199,42 @@ export default function DesignRowManager({
   projects: Project[];
   portfolioRows: number;
 }) {
-  const router = useRouter();
   const rowCount = clampMarqueeRows(portfolioRows);
   const [projects, setProjects] = useState(initial);
   const [drag, setDrag] = useState<{ row: number; index: number } | null>(null);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
+  const layoutSaveQueue = useRef(Promise.resolve());
+  const projectsRef = useRef(projects);
 
   useEffect(() => {
-    if (!busy) setProjects(initial);
-  }, [initial, busy]);
+    projectsRef.current = projects;
+  }, [projects]);
+
+  useEffect(() => {
+    setProjects(initial);
+  }, [initial]);
+
+  function setProjectPending(id: string, pending: boolean) {
+    setPendingIds((prev) => {
+      const next = new Set(prev);
+      if (pending) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
 
   async function refetchProjects() {
     const res = await fetch("/api/homepage-designs?admin=true", {
       cache: "no-store",
     });
-    const data = await parseResponseJson<Project[] | { error?: string }>(res);
+    const data = await parseResponseJson<HomepageDesign[] | { error?: string }>(res);
     if (!res.ok || !Array.isArray(data)) {
       throw new Error(
         !Array.isArray(data) && data.error ? data.error : "Failed to refresh designs"
       );
     }
-    const { homepageDesignToProjectShape } = await import("@/lib/design-module-mappers");
-    const shaped = (data as import("@/lib/types/database").HomepageDesign[]).map(
-      homepageDesignToProjectShape
-    );
+    const shaped = data.map(homepageDesignToProjectShape);
     setProjects(shaped);
     return shaped;
   }
@@ -218,21 +244,14 @@ export default function DesignRowManager({
     [projects, rowCount]
   );
 
-  async function persistReorder(rowProjects: Project[], row: number) {
-    const items = buildHomepageDesignReorderItems(
-      rowProjects.map((p) => ({
-        id: p.id,
-        title: p.title,
-        description: p.description,
-        media_url: p.media_url,
-        sort_order: p.metadata?.homepageSortOrder ?? p.sort_order,
-        published: p.published,
-        metadata: p.metadata,
-        created_at: p.created_at,
-        updated_at: p.updated_at,
-      })),
-      row
+  async function persistLayout(updates: { rowProjects: Project[]; row: number }[]) {
+    const items = updates.flatMap(({ rowProjects, row }) =>
+      buildHomepageDesignReorderItems(
+        rowProjects.map(projectToHomepageDesign),
+        row
+      )
     );
+
     const res = await fetch("/api/homepage-designs/reorder", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -243,12 +262,30 @@ export default function DesignRowManager({
     if (!res.ok) {
       throw new Error(data.error || "Failed to save design order");
     }
-    await refetchProjects();
-    router.refresh();
   }
 
-  async function persistRowOrder(row: number, rowProjects: Project[]) {
-    await persistReorder(rowProjects, row);
+  function queueLayoutSave(task: () => Promise<void>) {
+    layoutSaveQueue.current = layoutSaveQueue.current.then(task, task);
+    return layoutSaveQueue.current;
+  }
+
+  function saveLayoutInBackground(
+    updates: { rowProjects: Project[]; row: number }[],
+    rollbackSnapshot: Project[]
+  ) {
+    void queueLayoutSave(async () => {
+      try {
+        await persistLayout(updates);
+        setError("");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to save");
+        try {
+          await refetchProjects();
+        } catch {
+          setProjects(rollbackSnapshot);
+        }
+      }
+    });
   }
 
   async function updateProject(
@@ -259,18 +296,34 @@ export default function DesignRowManager({
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
+      cache: "no-store",
     });
-    if (!res.ok) return null;
-    const updated = (await res.json()) as import("@/lib/types/database").HomepageDesign;
-    const { homepageDesignToProjectShape } = await import("@/lib/design-module-mappers");
+    if (!res.ok) {
+      const data = await parseResponseJson<{ error?: string }>(res);
+      throw new Error(data.error || "Failed to update design");
+    }
+    const updated = (await res.json()) as HomepageDesign;
     const shaped = homepageDesignToProjectShape(updated);
     setProjects((prev) => prev.map((p) => (p.id === id ? shaped : p)));
-    router.refresh();
     return shaped;
   }
 
   async function togglePublished(id: string, published: boolean) {
-    await updateProject(id, { published });
+    const previous = projectsRef.current.find((p) => p.id === id);
+    setProjects((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, published } : p))
+    );
+    setProjectPending(id, true);
+    try {
+      await updateProject(id, { published });
+    } catch (err) {
+      if (previous) {
+        setProjects((prev) => prev.map((p) => (p.id === id ? previous : p)));
+      }
+      setError(err instanceof Error ? err.message : "Failed to update design");
+    } finally {
+      setProjectPending(id, false);
+    }
   }
 
   async function handleDelete(id: string) {
@@ -281,10 +334,23 @@ export default function DesignRowManager({
     ) {
       return;
     }
-    const res = await fetch(`/api/homepage-designs/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      setProjects((prev) => prev.filter((p) => p.id !== id));
-      router.refresh();
+
+    const previous = projectsRef.current;
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+    setProjectPending(id, true);
+    setError("");
+    try {
+      const res = await fetch(`/api/homepage-designs/${id}`, {
+        method: "DELETE",
+        cache: "no-store",
+      });
+      const data = await parseResponseJson<{ error?: string }>(res);
+      if (!res.ok) throw new Error(data.error || "Failed to delete design");
+    } catch (err) {
+      setProjects(previous);
+      setError(err instanceof Error ? err.message : "Failed to delete design");
+    } finally {
+      setProjectPending(id, false);
     }
   }
 
@@ -306,97 +372,94 @@ export default function DesignRowManager({
   }
 
   async function handleDrop(targetRow: number, targetIndex: number) {
-    if (!drag || busy) return;
+    if (!drag) return;
     if (drag.row === targetRow && drag.index === targetIndex) {
       setDrag(null);
       return;
     }
 
-    setBusy(true);
+    const snapshot = projectsRef.current;
     setError("");
-    try {
-      const sourceRow = drag.row;
-      const sourceProjects = [...rowGroups[sourceRow]];
-      const [moved] = sourceProjects.splice(drag.index, 1);
-      if (!moved) return;
 
-      if (sourceRow === targetRow) {
-        sourceProjects.splice(targetIndex, 0, moved);
-        const normalized = normalizeRowProjects(sourceProjects, sourceRow + 1);
-        applyRowState(normalized);
-        await persistRowOrder(sourceRow + 1, normalized);
-      } else {
-        const targetProjects = [...rowGroups[targetRow]];
-        const targetRowNum = targetRow + 1;
-        const updatedMoved: Project = {
-          ...moved,
-          metadata: { ...moved.metadata, marqueeRow: targetRowNum as 1 | 2 | 3 },
-        };
-        targetProjects.splice(targetIndex, 0, updatedMoved);
-
-        const normalizedSource = normalizeRowProjects(sourceProjects, sourceRow + 1);
-        const normalizedTarget = normalizeRowProjects(targetProjects, targetRowNum);
-        applyRowState([...normalizedSource, ...normalizedTarget]);
-
-        await persistReorder(normalizedSource, sourceRow + 1);
-        await persistReorder(normalizedTarget, targetRowNum);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
-      try {
-        await refetchProjects();
-      } catch {
-        setProjects(initial);
-      }
-    } finally {
-      setBusy(false);
+    const sourceRow = drag.row;
+    const sourceProjects = [...rowGroups[sourceRow]];
+    const [moved] = sourceProjects.splice(drag.index, 1);
+    if (!moved) {
       setDrag(null);
+      return;
     }
+
+    let layoutUpdates: { rowProjects: Project[]; row: number }[];
+
+    if (sourceRow === targetRow) {
+      sourceProjects.splice(targetIndex, 0, moved);
+      const normalized = normalizeRowProjects(sourceProjects, sourceRow + 1);
+      applyRowState(normalized);
+      layoutUpdates = [{ rowProjects: normalized, row: sourceRow + 1 }];
+    } else {
+      const targetProjects = [...rowGroups[targetRow]];
+      const targetRowNum = targetRow + 1;
+      const updatedMoved: Project = {
+        ...moved,
+        metadata: { ...moved.metadata, marqueeRow: targetRowNum as 1 | 2 | 3 },
+      };
+      targetProjects.splice(targetIndex, 0, updatedMoved);
+
+      const normalizedSource = normalizeRowProjects(sourceProjects, sourceRow + 1);
+      const normalizedTarget = normalizeRowProjects(targetProjects, targetRowNum);
+      applyRowState([...normalizedSource, ...normalizedTarget]);
+      layoutUpdates = [
+        { rowProjects: normalizedSource, row: sourceRow + 1 },
+        { rowProjects: normalizedTarget, row: targetRowNum },
+      ];
+    }
+
+    setDrag(null);
+    saveLayoutInBackground(layoutUpdates, snapshot);
   }
 
-  async function moveToRow(project: Project, targetRow: number) {
-    if (busy) return;
+  function moveToRow(project: Project, targetRow: number) {
     const currentRow = clampMarqueeRow(project.metadata?.marqueeRow ?? 1, rowCount);
     if (currentRow === targetRow) return;
 
-    setBusy(true);
+    const snapshot = projectsRef.current;
     setError("");
-    try {
-      const sourceIndex = currentRow - 1;
-      const targetIndex = targetRow - 1;
-      const sourceProjects = rowGroups[sourceIndex].filter((p) => p.id !== project.id);
-      const targetProjects = [...rowGroups[targetIndex], project];
 
-      const normalizedSource = normalizeRowProjects(sourceProjects, currentRow);
-      const normalizedTarget = normalizeRowProjects(targetProjects, targetRow);
-      applyRowState([...normalizedSource, ...normalizedTarget]);
+    const sourceIndex = currentRow - 1;
+    const targetIndex = targetRow - 1;
+    const sourceProjects = rowGroups[sourceIndex].filter((p) => p.id !== project.id);
+    const targetProjects = [...rowGroups[targetIndex], project];
 
-      await persistReorder(normalizedSource, currentRow);
-      await persistReorder(normalizedTarget, targetRow);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
-      try {
-        await refetchProjects();
-      } catch {
-        setProjects(initial);
-      }
-    } finally {
-      setBusy(false);
-    }
+    const normalizedSource = normalizeRowProjects(sourceProjects, currentRow);
+    const normalizedTarget = normalizeRowProjects(targetProjects, targetRow);
+    applyRowState([...normalizedSource, ...normalizedTarget]);
+
+    saveLayoutInBackground(
+      [
+        { rowProjects: normalizedSource, row: currentRow },
+        { rowProjects: normalizedTarget, row: targetRow },
+      ],
+      snapshot
+    );
   }
 
   async function removeFromHomepage(project: Project) {
-    if (
-      !confirm(
-        `Remove "${project.title || "this design"}" from the homepage showcase only? The /designs gallery page will not be affected.`
-      )
-    ) {
-      return;
-    }
-    const res = await fetch(`/api/homepage-designs/${project.id}`, { method: "DELETE" });
-    if (res.ok) {
-      setProjects((prev) => prev.filter((p) => p.id !== project.id));
-      router.refresh();
+    const previous = projectsRef.current;
+    setProjects((prev) => prev.filter((p) => p.id !== project.id));
+    setProjectPending(project.id, true);
+    setError("");
+    try {
+      const res = await fetch(`/api/homepage-designs/${project.id}`, {
+        method: "DELETE",
+        cache: "no-store",
+      });
+      const data = await parseResponseJson<{ error?: string }>(res);
+      if (!res.ok) throw new Error(data.error || "Failed to remove from homepage");
+    } catch (err) {
+      setProjects(previous);
+      setError(err instanceof Error ? err.message : "Failed to remove from homepage");
+    } finally {
+      setProjectPending(project.id, false);
     }
   }
 
@@ -472,7 +535,7 @@ export default function DesignRowManager({
                       project={project}
                       rowIndex={rowIndex}
                       rowCount={rowCount}
-                      busy={busy}
+                      cardBusy={pendingIds.has(project.id)}
                       onDragStart={() => setDrag({ row: rowIndex, index })}
                       onDrop={() => handleDrop(rowIndex, index)}
                       onMoveRow={(row) => moveToRow(project, row)}

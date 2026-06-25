@@ -242,7 +242,52 @@ export async function createLocalHomepageDesign(
   let created!: HomepageDesign;
 
   await updatePortfolioStore((store) => {
+    const existingByUrl = store.homepage_designs.find(
+      (d) =>
+        d.media_url === input.media_url &&
+        clampMarqueeRow(d.metadata?.marqueeRow ?? 1) ===
+          clampMarqueeRow(input.metadata?.marqueeRow ?? 1)
+    );
+    if (existingByUrl) {
+      created = existingByUrl;
+      return;
+    }
     created = appendHomepageDesign(store, input, id, now);
+  });
+
+  return created;
+}
+
+export async function createLocalHomepageDesignsBatch(
+  inputs: HomepageDesignInput[]
+): Promise<HomepageDesign[]> {
+  if (inputs.length === 0) return [];
+  if (inputs.length === 1) return [await createLocalHomepageDesign(inputs[0])];
+
+  const now = new Date().toISOString();
+  const planned = inputs.map((input) => ({ id: randomUUID(), input }));
+  const created: HomepageDesign[] = [];
+
+  await updatePortfolioStore((store) => {
+    created.length = 0;
+    for (const { id, input } of planned) {
+      const existing = store.homepage_designs.find((d) => d.id === id);
+      if (existing) {
+        created.push(existing);
+        continue;
+      }
+      const existingByUrl = store.homepage_designs.find(
+        (d) =>
+          d.media_url === input.media_url &&
+          clampMarqueeRow(d.metadata?.marqueeRow ?? 1) ===
+            clampMarqueeRow(input.metadata?.marqueeRow ?? 1)
+      );
+      if (existingByUrl) {
+        created.push(existingByUrl);
+        continue;
+      }
+      created.push(appendHomepageDesign(store, input, id, now));
+    }
   });
 
   return created;

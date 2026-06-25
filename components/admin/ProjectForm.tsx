@@ -174,11 +174,26 @@ export default function ProjectForm({
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      cache: "no-store",
     });
     const data = await parseResponseJson<Project & { error?: string }>(res);
     if (!res.ok) throw new Error(data.error || "Failed to save");
     if (!data.id) {
-      throw new Error("Save did not complete. Please try again — your live data may still be syncing.");
+      throw new Error("Save did not complete. Please try again.");
+    }
+    return data;
+  }
+
+  async function saveHomepageDesignsBatch(payloads: HomepageDesignInput[]) {
+    const res = await fetch("/api/homepage-designs/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: payloads }),
+      cache: "no-store",
+    });
+    const data = await parseResponseJson<Array<{ id: string }> | { error?: string }>(res);
+    if (!res.ok || !Array.isArray(data)) {
+      throw new Error(!Array.isArray(data) && data.error ? data.error : "Failed to save designs");
     }
     return data;
   }
@@ -205,9 +220,17 @@ export default function ProjectForm({
           type === "design" ? await buildDesignPayload(mediaUrl) : buildPayload(mediaUrl);
         await saveProject(payload);
       } else if (allowMultiple) {
-        for (const url of mediaUrls) {
-          const payload = type === "design" ? await buildDesignPayload(url) : buildPayload(url);
-          await saveProject(payload);
+        if (type === "design") {
+          const payloads = await Promise.all(mediaUrls.map((url) => buildDesignPayload(url)));
+          if (payloads.length === 1) {
+            await saveProject(payloads[0]);
+          } else {
+            await saveHomepageDesignsBatch(payloads);
+          }
+        } else {
+          await Promise.all(
+            mediaUrls.map(async (url) => saveProject(buildPayload(url)))
+          );
         }
       } else {
         const payload =
@@ -216,7 +239,6 @@ export default function ProjectForm({
       }
 
       router.push(`/admin/projects?type=${type}`);
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
@@ -242,10 +264,9 @@ export default function ProjectForm({
         type === "design"
           ? `/api/homepage-designs/${initial.id}`
           : `/api/projects/${initial.id}`;
-      const res = await fetch(url, { method: "DELETE" });
+      const res = await fetch(url, { method: "DELETE", cache: "no-store" });
       if (!res.ok) throw new Error("Failed to delete");
       router.push(`/admin/projects?type=${type}`);
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete");
     } finally {
