@@ -282,10 +282,27 @@ async function updatePortfolioStore(
   mutate: (store: PortfolioStore) => void | Promise<void>
 ): Promise<PortfolioStore> {
   const run = async () => {
-    const store = cloneStore(await loadPortfolioStore());
-    await mutate(store);
-    await savePortfolioStore(store);
-    return store;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        if (attempt > 0) {
+          portfolioMemoryCache = null;
+          portfolioMemoryCacheAt = 0;
+        }
+        const store = cloneStore(await loadPortfolioStore());
+        await mutate(store);
+        await savePortfolioStore(store);
+        return store;
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error("Failed to save portfolio");
+        if (attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 200 * (attempt + 1)));
+        }
+      }
+    }
+
+    throw lastError ?? new Error("Failed to save portfolio");
   };
 
   const result = portfolioWriteLock.then(run, run);

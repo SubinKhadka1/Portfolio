@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -126,10 +126,10 @@ function GalleryDesignCard({
           onRemoveFromSection();
         }}
         className="admin-gallery-card__remove"
-        title={currentCategoryId ? "Remove from this section" : "Remove from gallery"}
-        aria-label={currentCategoryId ? "Remove from this section" : "Remove from gallery"}
+        title="Remove design"
+        aria-label="Remove design"
       >
-        <X size={14} strokeWidth={2.5} />
+        <X size={16} strokeWidth={2.5} />
       </button>
       <div className="admin-gallery-card__bar">
         <span className="admin-gallery-card__grip" data-gallery-drag-handle aria-hidden>
@@ -215,6 +215,11 @@ export default function GalleryManager({
   const [drag, setDrag] = useState<GalleryDrag | null>(null);
   const [dragOver, setDragOver] = useState<DragOverTarget | null>(null);
   const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
+  const designsRef = useRef(designs);
+
+  useEffect(() => {
+    designsRef.current = designs;
+  }, [designs]);
 
   const grouped = useMemo(
     () => groupDesignsForGalleryAdmin(designs, categories),
@@ -273,6 +278,28 @@ export default function GalleryManager({
     if (!res.ok) throw new Error(data.error || "Failed to save gallery order");
   }
 
+  async function deleteDesignInstant(design: GalleryDesign) {
+    const previous = designsRef.current;
+    setDesigns((prev) => prev.filter((d) => d.id !== design.id));
+    setDesignPending(design.id, true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch(`/api/gallery-designs/${design.id}`, {
+        method: "DELETE",
+        cache: "no-store",
+      });
+      const data = await parseResponseJson<{ error?: string }>(res);
+      if (!res.ok) throw new Error(data.error || "Failed to remove design");
+      setMessage(`Removed "${design.title || "design"}".`);
+    } catch (err) {
+      setDesigns(previous);
+      setError(err instanceof Error ? err.message : "Failed to remove design");
+    } finally {
+      setDesignPending(design.id, false);
+    }
+  }
+
   async function deleteFromGallery(design: GalleryDesign) {
     if (
       !confirm(
@@ -282,7 +309,7 @@ export default function GalleryManager({
       return;
     }
 
-    const previous = designs;
+    const previous = designsRef.current;
     setDesigns((prev) => prev.filter((d) => d.id !== design.id));
     setDesignPending(design.id, true);
     setError("");
@@ -909,9 +936,7 @@ export default function GalleryManager({
                       }
                     }}
                     onHide={() => hideFromGallery(design)}
-                    onRemoveFromSection={() =>
-                      removeFromSection(design, cat?.id ?? null, cat?.name ?? title)
-                    }
+                    onRemoveFromSection={() => deleteDesignInstant(design)}
                     onFeatureHomepage={() => featureOnHomepage(design)}
                     onDelete={() => deleteFromGallery(design)}
                     onDragStart={() =>

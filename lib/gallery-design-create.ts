@@ -192,44 +192,58 @@ async function uploadPreparedFiles(
   return { staged, failed };
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function saveGalleryDesignsBatch(
   payloads: GalleryDesignInput[],
   categoryId: string
 ): Promise<GalleryDesign[]> {
   if (payloads.length === 0) return [];
 
-  if (payloads.length === 1) {
-    const res = await fetch("/api/gallery-designs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payloads[0]),
-      cache: "no-store",
-    });
-    const data = await parseResponseJson<GalleryDesign & { error?: string }>(res);
-    if (!res.ok || !data.id) {
-      throw new Error(data.error || "Failed to create design");
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (payloads.length === 1) {
+        const res = await fetch("/api/gallery-designs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payloads[0]),
+          cache: "no-store",
+        });
+        const data = await parseResponseJson<GalleryDesign & { error?: string }>(res);
+        if (!res.ok || !data.id) {
+          throw new Error(data.error || "Failed to create design");
+        }
+        if (data.category_id !== categoryId) {
+          throw new Error("Design was saved to the wrong section. Please refresh and try again.");
+        }
+        return [data];
+      }
+
+      const res = await fetch("/api/gallery-designs/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: payloads }),
+        cache: "no-store",
+      });
+      const data = await parseResponseJson<GalleryDesign[] | { error?: string }>(res);
+      if (!res.ok || !Array.isArray(data)) {
+        throw new Error(!Array.isArray(data) && data.error ? data.error : "Failed to save designs");
+      }
+      const wrongSection = data.find((design) => design.category_id !== categoryId);
+      if (wrongSection) {
+        throw new Error("Some designs were saved to the wrong section. Please refresh and try again.");
+      }
+      return data;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error("Failed to save designs");
+      if (attempt < 2) await sleep(250 * (attempt + 1));
     }
-    if (data.category_id !== categoryId) {
-      throw new Error("Design was saved to the wrong section. Please refresh and try again.");
-    }
-    return [data];
   }
 
-  const res = await fetch("/api/gallery-designs/batch", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items: payloads }),
-    cache: "no-store",
-  });
-  const data = await parseResponseJson<GalleryDesign[] | { error?: string }>(res);
-  if (!res.ok || !Array.isArray(data)) {
-    throw new Error(!Array.isArray(data) && data.error ? data.error : "Failed to save designs");
-  }
-  const wrongSection = data.find((design) => design.category_id !== categoryId);
-  if (wrongSection) {
-    throw new Error("Some designs were saved to the wrong section. Please refresh and try again.");
-  }
-  return data;
+  throw lastError ?? new Error("Failed to save designs");
 }
 
 async function saveDesignsOneByOne({
