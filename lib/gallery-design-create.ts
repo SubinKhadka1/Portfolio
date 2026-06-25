@@ -86,67 +86,6 @@ async function prepareUploads(
   return { prepared, failed };
 }
 
-async function uploadPreparedDesigns({
-  prepared,
-  categoryId,
-  startSortOrder,
-  onProgress,
-}: {
-  prepared: PreparedUpload[];
-  categoryId: string;
-  startSortOrder: number;
-  onProgress?: (message: string) => void;
-}): Promise<{ created: GalleryDesign[]; failed: { name: string; error: string }[] }> {
-  if (!prepared.length) return { created: [], failed: [] };
-
-  onProgress?.(`Uploading ${prepared.length} design${prepared.length === 1 ? "" : "s"}…`);
-
-  const formData = new FormData();
-  formData.append("categoryId", categoryId);
-  formData.append("startSortOrder", String(startSortOrder));
-  formData.append(
-    "manifest",
-    JSON.stringify(
-      prepared.map((entry) => ({
-        aspectRatio: entry.aspectRatio,
-        width: entry.width,
-        height: entry.height,
-        title: titleFromMediaUrl(entry.originalName),
-      }))
-    )
-  );
-
-  for (const entry of prepared) {
-    formData.append("files", entry.file, entry.originalName);
-  }
-
-  const res = await fetch("/api/gallery-designs/upload", {
-    method: "POST",
-    body: formData,
-    cache: "no-store",
-  });
-
-  const data = await parseResponseJson<{
-    designs?: GalleryDesign[];
-    failed?: { name: string; error: string }[];
-    error?: string;
-  }>(res);
-
-  if (!res.ok || !Array.isArray(data.designs)) {
-    throw new Error(data.error || "Failed to save designs");
-  }
-
-  const wrongSection = data.designs.find((design) => design.category_id !== categoryId);
-  if (wrongSection) {
-    throw new Error("Designs were saved to the wrong section. Please refresh and try again.");
-  }
-
-  return {
-    created: data.designs,
-    failed: data.failed ?? [],
-  };
-}
-
 function buildGalleryDesignPayload({
   mediaUrl,
   categoryId,
@@ -176,26 +115,6 @@ function buildGalleryDesignPayload({
   };
 }
 
-async function saveGalleryDesignPayload(
-  payload: GalleryDesignInput,
-  categoryId: string
-): Promise<GalleryDesign> {
-  const res = await fetch("/api/gallery-designs", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-    cache: "no-store",
-  });
-  const data = await parseResponseJson<GalleryDesign & { error?: string }>(res);
-  if (!res.ok || !data.id) {
-    throw new Error(data.error || "Failed to create design");
-  }
-  if (data.category_id !== categoryId) {
-    throw new Error("Design was saved but section assignment failed. Please try again.");
-  }
-  return data;
-}
-
 async function uploadDesignFile(file: File): Promise<{
   url: string;
   width: number;
@@ -220,13 +139,106 @@ async function uploadDesignFile(file: File): Promise<{
   };
 }
 
+async function uploadPreparedFiles(
+  prepared: PreparedUpload[],
+  onProgress?: (message: string) => void
+): Promise<{
+  staged: { prepared: PreparedUpload; url: string }[];
+  failed: { name: string; error: string }[];
+}> {
+  const failed: { name: string; error: string }[] = [];
+  let finished = 0;
+
+  const results = await mapWithConcurrency(
+    prepared,
+    async (entry) => {
+      try {
+        const uploaded = await uploadDesignFile(entry.file);
+        return {
+          ok: true as const,
+          value: {
+            prepared: {
+              ...entry,
+              width: uploaded.width,
+              height: uploaded.height,
+              aspectRatio: uploaded.aspectRatio,
+            },
+            url: uploaded.url,
+          },
+        };
+      } catch (err) {
+        return {
+          ok: false as const,
+          name: entry.originalName,
+          error: err instanceof Error ? err.message : "Upload failed",
+        };
+      } finally {
+        finished += 1;
+        onProgress?.(`Uploading image ${finished} of ${prepared.length}…`);
+      }
+    },
+    3
+  );
+
+  const staged: { prepared: PreparedUpload; url: string }[] = [];
+  for (const result of results) {
+    if (result.ok) {
+      staged.push(result.value);
+    } else {
+      failed.push({ name: result.name, error: result.error });
+    }
+  }
+
+  return { staged, failed };
+}
+
+async function saveGalleryDesignsBatch(
+  payloads: GalleryDesignInput[],
+  categoryId: string
+): Promise<GalleryDesign[]> {
+  if (payloads.length === 0) return [];
+
+  if (payloads.length === 1) {
+    const res = await fetch("/api/gallery-designs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payloads[0]),
+      cache: "no-store",
+    });
+    const data = await parseResponseJson<GalleryDesign & { error?: string }>(res);
+    if (!res.ok || !data.id) {
+      throw new Error(data.error || "Failed to create design");
+    }
+    if (data.category_id !== categoryId) {
+      throw new Error("Design was saved to the wrong section. Please refresh and try again.");
+    }
+    return [data];
+  }
+
+  const res = await fetch("/api/gallery-designs/batch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items: payloads }),
+    cache: "no-store",
+  });
+  const data = await parseResponseJson<GalleryDesign[] | { error?: string }>(res);
+  if (!res.ok || !Array.isArray(data)) {
+    throw new Error(!Array.isArray(data) && data.error ? data.error : "Failed to save designs");
+  }
+  const wrongSection = data.find((design) => design.category_id !== categoryId);
+  if (wrongSection) {
+    throw new Error("Some designs were saved to the wrong section. Please refresh and try again.");
+  }
+  return data;
+}
+
 async function saveDesignsOneByOne({
-  prepared,
+  staged,
   categoryId,
   startSortOrder,
   onProgress,
 }: {
-  prepared: PreparedUpload[];
+  staged: { prepared: PreparedUpload; url: string }[];
   categoryId: string;
   startSortOrder: number;
   onProgress?: (message: string) => void;
@@ -234,29 +246,25 @@ async function saveDesignsOneByOne({
   const created: GalleryDesign[] = [];
   const failed: { name: string; error: string }[] = [];
 
-  for (let i = 0; i < prepared.length; i++) {
-    const entry = prepared[i];
-    onProgress?.(`Saving ${i + 1} of ${prepared.length}…`);
+  for (let i = 0; i < staged.length; i++) {
+    const { prepared, url } = staged[i];
+    onProgress?.(`Saving ${i + 1} of ${staged.length}…`);
     try {
-      const uploaded = await uploadDesignFile(entry.file);
-      const design = await saveGalleryDesignPayload(
-        buildGalleryDesignPayload({
-          mediaUrl: uploaded.url,
-          categoryId,
-          sortOrder: startSortOrder + i * 1_000,
-          prepared: {
-            ...entry,
-            width: uploaded.width,
-            height: uploaded.height,
-            aspectRatio: uploaded.aspectRatio,
-          },
-        }),
+      const batch = await saveGalleryDesignsBatch(
+        [
+          buildGalleryDesignPayload({
+            mediaUrl: url,
+            categoryId,
+            sortOrder: startSortOrder + created.length * 1_000,
+            prepared,
+          }),
+        ],
         categoryId
       );
-      created.push(design);
+      created.push(...batch);
     } catch (err) {
       failed.push({
-        name: entry.originalName,
+        name: prepared.originalName,
         error: err instanceof Error ? err.message : "Could not add to section",
       });
     }
@@ -270,7 +278,7 @@ export type SectionUploadResult = {
   failed: { name: string; error: string }[];
 };
 
-/** Upload many files into one gallery section — one media+save round trip when possible. */
+/** Upload files to storage, then save all gallery records in one JSON batch. */
 export async function uploadDesignsToSection({
   files,
   categoryId,
@@ -282,30 +290,46 @@ export async function uploadDesignsToSection({
   startSortOrder: number;
   onProgress?: (message: string) => void;
 }): Promise<SectionUploadResult> {
-  const { prepared, failed } = await prepareUploads(files, onProgress);
+  const { prepared, failed: prepareFailed } = await prepareUploads(files, onProgress);
   if (!prepared.length) {
+    return { created: [], failed: prepareFailed };
+  }
+
+  const { staged, failed: uploadFailed } = await uploadPreparedFiles(prepared, onProgress);
+  const failed = [...prepareFailed, ...uploadFailed];
+
+  if (!staged.length) {
     return { created: [], failed };
   }
 
+  onProgress?.(`Saving ${staged.length} design${staged.length === 1 ? "" : "s"} to section…`);
+
+  const payloads = staged.map((entry, index) =>
+    buildGalleryDesignPayload({
+      mediaUrl: entry.url,
+      categoryId,
+      sortOrder: startSortOrder + index * 1_000,
+      prepared: entry.prepared,
+    })
+  );
+
   try {
-    const result = await uploadPreparedDesigns({
-      prepared,
-      categoryId,
-      startSortOrder,
-      onProgress,
-    });
-    return {
-      created: result.created,
-      failed: [...failed, ...result.failed],
-    };
-  } catch {
-    onProgress?.("Bulk upload failed — saving designs one at a time…");
+    const created = await saveGalleryDesignsBatch(payloads, categoryId);
+    return { created, failed };
+  } catch (batchError) {
+    onProgress?.("Batch save failed — saving designs one at a time…");
     const fallback = await saveDesignsOneByOne({
-      prepared,
+      staged,
       categoryId,
       startSortOrder,
       onProgress,
     });
+    if (fallback.created.length === 0 && fallback.failed.length === 0) {
+      failed.push({
+        name: "batch",
+        error: batchError instanceof Error ? batchError.message : "Failed to save designs",
+      });
+    }
     return {
       created: fallback.created,
       failed: [...failed, ...fallback.failed],

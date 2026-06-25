@@ -217,7 +217,18 @@ function cloneStore(store: PortfolioStore): PortfolioStore {
 /** Serialize portfolio writes so concurrent admin actions cannot overwrite each other. */
 let portfolioWriteLock: Promise<unknown> = Promise.resolve();
 
+/** Same-instance reads after a write see the data we just saved (blob CDN can lag). */
+let portfolioMemoryCache: PortfolioStore | null = null;
+let portfolioMemoryCacheAt = 0;
+const PORTFOLIO_MEMORY_TTL_MS = 30_000;
+
 async function loadPortfolioStore(): Promise<PortfolioStore> {
+  if (
+    portfolioMemoryCache &&
+    Date.now() - portfolioMemoryCacheAt < PORTFOLIO_MEMORY_TTL_MS
+  ) {
+    return cloneStore(portfolioMemoryCache);
+  }
   const fromBlob = await readJsonFile<Partial<PortfolioStore>>(PORTFOLIO_JSON);
   if (fromBlob) return migrateStore(normalizePortfolioStore(fromBlob));
 
@@ -263,6 +274,8 @@ async function loadPortfolioStore(): Promise<PortfolioStore> {
 async function savePortfolioStore(store: PortfolioStore) {
   if (isNextBuildPhase()) return;
   await writeJsonFile(PORTFOLIO_JSON, store);
+  portfolioMemoryCache = cloneStore(store);
+  portfolioMemoryCacheAt = Date.now();
 }
 
 async function updatePortfolioStore(
