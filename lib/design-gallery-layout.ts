@@ -1,6 +1,6 @@
-export const GALLERY_ROW_GAP_PX = 12;
-export const GALLERY_MIN_ROW_HEIGHT = 148;
-export const GALLERY_MAX_ROW_HEIGHT = 520;
+export const GALLERY_ROW_GAP_PX = 8;
+export const GALLERY_MIN_ROW_HEIGHT = 120;
+export const GALLERY_MAX_ROW_HEIGHT = 480;
 
 export type GalleryAspectSource = {
   imageWidth?: number;

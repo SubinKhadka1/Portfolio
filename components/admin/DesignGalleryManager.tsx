@@ -20,6 +20,7 @@ import {
 import { uploadDesignsToSection } from "@/lib/gallery-design-create";
 import { buildGalleryDesignReorderItems } from "@/lib/reorder-payload";
 import { parseResponseJson } from "@/lib/parse-response";
+import GalleryJustifiedMosaic from "@/components/admin/GalleryJustifiedMosaic";
 import type { Category, GalleryDesign } from "@/lib/types/database";
 import type { SiteSettings } from "@/lib/site-settings-read";
 
@@ -27,13 +28,6 @@ const ACCEPT = "image/jpeg,image/png,image/webp,image/jpg,.jpg,.jpeg,.png,.webp"
 
 type SortMode = "order" | "newest" | "oldest" | "featured";
 type Tab = "designs" | "categories" | "settings";
-
-function reorderList<T>(items: T[], from: number, to: number) {
-  const next = [...items];
-  const [moved] = next.splice(from, 1);
-  next.splice(to, 0, moved);
-  return next;
-}
 
 function isImageFile(file: File) {
   const ext = file.name.split(".").pop()?.toLowerCase() || "";
@@ -60,14 +54,15 @@ export default function DesignGalleryManager({
   const [categories, setCategories] = useState(initialCategories);
   const [designs, setDesigns] = useState(initialDesigns);
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [activeCategory, setActiveCategory] = useState(
+    initialCategories[0]?.id || "uncategorized"
+  );
   const [sort, setSort] = useState<SortMode>("order");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<GalleryDesign | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
-  const [uploadCategory, setUploadCategory] = useState(categories[0]?.id || "");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [showUpload, setShowUpload] = useState(false);
@@ -80,23 +75,34 @@ export default function DesignGalleryManager({
 
   const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    let uncategorized = 0;
+    for (const d of designs) {
+      if (d.category_id) counts.set(d.category_id, (counts.get(d.category_id) || 0) + 1);
+      else uncategorized += 1;
+    }
+    return { counts, uncategorized };
+  }, [designs]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = designs.filter((d) => {
-      if (categoryFilter === "uncategorized") {
-        if (d.category_id) return false;
-      } else if (categoryFilter !== "all" && d.category_id !== categoryFilter) {
-        return false;
-      }
-      if (!q) return true;
-      const cat = d.category_id ? categoryMap.get(d.category_id)?.name : "";
-      return (
-        d.title.toLowerCase().includes(q) ||
-        d.description.toLowerCase().includes(q) ||
-        (cat || "").toLowerCase().includes(q) ||
-        (d.metadata?.clientName || "").toLowerCase().includes(q)
-      );
+      if (activeCategory === "uncategorized") return !d.category_id;
+      return d.category_id === activeCategory;
     });
+
+    if (q) {
+      list = list.filter((d) => {
+        const cat = d.category_id ? categoryMap.get(d.category_id)?.name : "";
+        return (
+          d.title.toLowerCase().includes(q) ||
+          d.description.toLowerCase().includes(q) ||
+          (cat || "").toLowerCase().includes(q) ||
+          (d.metadata?.clientName || "").toLowerCase().includes(q)
+        );
+      });
+    }
 
     if (sort === "newest") list = [...list].sort((a, b) => b.created_at.localeCompare(a.created_at));
     else if (sort === "oldest") list = [...list].sort((a, b) => a.created_at.localeCompare(b.created_at));
@@ -109,7 +115,7 @@ export default function DesignGalleryManager({
     else list = [...list].sort((a, b) => a.sort_order - b.sort_order);
 
     return list;
-  }, [designs, search, categoryFilter, sort, categoryMap]);
+  }, [designs, search, activeCategory, sort, categoryMap]);
 
   const flash = useCallback((msg: string, isError = false) => {
     if (isError) {
@@ -143,7 +149,7 @@ export default function DesignGalleryManager({
       return;
     }
 
-    const catId = uploadCategory || null;
+    const catId = activeCategory === "uncategorized" ? null : activeCategory;
     setUploading(true);
     setUploadProgress(`Starting upload of ${allowed.length} image${allowed.length === 1 ? "" : "s"}…`);
 
@@ -293,14 +299,33 @@ export default function DesignGalleryManager({
     }
   };
 
-  const onDropReorder = (targetId: string) => {
-    if (!dragId || dragId === targetId) return;
-    const from = filtered.findIndex((d) => d.id === dragId);
-    const to = filtered.findIndex((d) => d.id === targetId);
-    if (from < 0 || to < 0) return;
-    const reordered = reorderList(filtered, from, to);
-    void saveReorder(reordered);
-    setDragId(null);
+  const onDropReorder = (ordered: GalleryDesign[]) => {
+    void saveReorder(ordered);
+  };
+
+  const selectCategory = (id: string) => {
+    setActiveCategory(id);
+    setSelected(new Set());
+  };
+
+  const moveDesignToCategory = async (designId: string, categoryId: string | null) => {
+    markPending([designId], true);
+    try {
+      const res = await fetch(`/api/gallery-designs/${designId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category_id: categoryId }),
+        cache: "no-store",
+      });
+      const data = await parseResponseJson<GalleryDesign & { error?: string }>(res);
+      if (!res.ok) throw new Error(data.error || "Move failed");
+      setDesigns((prev) => prev.map((d) => (d.id === data.id ? data : d)));
+      flash("Moved to category.");
+    } catch (err) {
+      flash(err instanceof Error ? err.message : "Move failed", true);
+    } finally {
+      markPending([designId], false);
+    }
   };
 
   const toggleFeatured = async (design: GalleryDesign) => {
@@ -411,231 +436,252 @@ export default function DesignGalleryManager({
       )}
 
       {tab === "designs" && (
-        <>
-          <div className="dgm__toolbar">
-            <div className="dgm__search">
-              <Search size={15} />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search designs…"
-                className="dgm__search-input"
-              />
-            </div>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="dgm__select"
+        <div className="dgm-layout">
+          <aside className="dgm-sidebar">
+            <p className="dgm-sidebar__label">Categories</p>
+            <button
+              type="button"
+              onClick={() => selectCategory("uncategorized")}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => {
+                if (dragId) {
+                  void moveDesignToCategory(dragId, null);
+                  setDragId(null);
+                }
+              }}
+              className={`dgm-sidebar__item${activeCategory === "uncategorized" ? " dgm-sidebar__item--active" : ""}`}
             >
-              <option value="all">All categories</option>
-              <option value="uncategorized">Uncategorized</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <select value={sort} onChange={(e) => setSort(e.target.value as SortMode)} className="dgm__select">
-              <option value="order">Display order</option>
-              <option value="newest">Newest</option>
-              <option value="oldest">Oldest</option>
-              <option value="featured">Featured</option>
-            </select>
-            <button type="button" onClick={() => setShowUpload((v) => !v)} className="dgm__btn dgm__btn--primary">
-              <Upload size={15} />
-              Upload
+              <span>Uncategorized</span>
+              <span className="dgm-sidebar__count">{categoryCounts.uncategorized}</span>
             </button>
-          </div>
-
-          {selected.size > 0 && (
-            <div className="dgm__bulk">
-              <span>{selected.size} selected</span>
-              <select
-                defaultValue=""
-                onChange={(e) => {
-                  if (e.target.value) {
-                    bulkMoveCategory(e.target.value === "none" ? null : e.target.value);
-                    e.target.value = "";
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => selectCategory(cat.id)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => {
+                  if (dragId) {
+                    void moveDesignToCategory(dragId, cat.id);
+                    setDragId(null);
                   }
                 }}
+                className={`dgm-sidebar__item${activeCategory === cat.id ? " dgm-sidebar__item--active" : ""}`}
+              >
+                <span>{cat.name}</span>
+                <span className="dgm-sidebar__count">{categoryCounts.counts.get(cat.id) || 0}</span>
+              </button>
+            ))}
+          </aside>
+
+          <div className="dgm-main">
+            <div className="dgm__toolbar">
+              <div className="dgm__search">
+                <Search size={15} />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search in this category…"
+                  className="dgm__search-input"
+                />
+              </div>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortMode)}
                 className="dgm__select"
               >
-                <option value="">Move to category…</option>
-                <option value="none">Uncategorized</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
+                <option value="order">Display order</option>
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="featured">Featured</option>
               </select>
               <button
                 type="button"
-                onClick={() => deleteDesigns([...selected])}
-                className="dgm__btn dgm__btn--danger"
+                onClick={() => setShowUpload((v) => !v)}
+                className="dgm__btn dgm__btn--primary"
               >
-                <Trash2 size={14} />
-                Delete
-              </button>
-              <button type="button" onClick={() => setSelected(new Set())} className="dgm__btn">
-                Clear
+                <Upload size={15} />
+                Upload here
               </button>
             </div>
-          )}
 
-          {showUpload && (
-            <div className="dgm__upload">
-              <div className="dgm__upload-header">
+            {selected.size > 0 && (
+              <div className="dgm__bulk">
+                <span>{selected.size} selected</span>
                 <select
-                  value={uploadCategory}
-                  onChange={(e) => setUploadCategory(e.target.value)}
+                  defaultValue=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      bulkMoveCategory(e.target.value === "none" ? null : e.target.value);
+                      e.target.value = "";
+                    }
+                  }}
                   className="dgm__select"
                 >
-                  <option value="">Uncategorized</option>
+                  <option value="">Move to category…</option>
+                  <option value="none">Uncategorized</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
                   ))}
                 </select>
+                <button
+                  type="button"
+                  onClick={() => deleteDesigns([...selected])}
+                  className="dgm__btn dgm__btn--danger"
+                >
+                  <Trash2 size={14} />
+                  Delete
+                </button>
+                <button type="button" onClick={() => setSelected(new Set())} className="dgm__btn">
+                  Clear
+                </button>
               </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept={ACCEPT}
-                multiple
-                className="sr-only"
-                disabled={uploading}
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || []);
-                  if (files.length) void runUpload(files);
+            )}
+
+            {showUpload && (
+              <div className="dgm__upload">
+                <p className="dgm__upload-target">
+                  Uploading to:{" "}
+                  <strong>
+                    {activeCategory === "uncategorized"
+                      ? "Uncategorized"
+                      : categoryMap.get(activeCategory)?.name}
+                  </strong>
+                </p>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept={ACCEPT}
+                  multiple
+                  className="sr-only"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length) void runUpload(files);
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => fileRef.current?.click()}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    if (!uploading) setDragging(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false);
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragging(false);
+                    if (!uploading) void runUpload(Array.from(e.dataTransfer.files || []));
+                  }}
+                  className={`dgm__dropzone${dragging ? " dgm__dropzone--active" : ""}`}
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 size={22} className="animate-spin text-purple-400" />
+                      <span>{uploadProgress || "Uploading…"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={22} className="text-purple-400" />
+                      <span>Drop images here or click to browse</span>
+                      <span className="dgm__dropzone-hint">Any size — layout adapts automatically</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            <p className="dgm__count">
+              {filtered.length} design{filtered.length === 1 ? "" : "s"} in this category
+              {sort === "order" ? " — drag to reorder layout" : ""}
+            </p>
+
+            {filtered.length > 0 ? (
+              <GalleryJustifiedMosaic
+                designs={filtered}
+                disabled={sort !== "order"}
+                onReorder={onDropReorder}
+                onDragStart={setDragId}
+                onDragEnd={() => setDragId(null)}
+                renderOverlay={(design) => {
+                  const busy = pendingIds.has(design.id);
+                  return (
+                    <>
+                      <div className="dgm-mosaic__check">
+                        <button
+                          type="button"
+                          onClick={() => toggleSelect(design.id)}
+                          className={`dgm__checkbox${selected.has(design.id) ? " dgm__checkbox--on" : ""}`}
+                          aria-label="Select design"
+                        >
+                          {selected.has(design.id) ? <Check size={12} /> : null}
+                        </button>
+                      </div>
+                      <div className="dgm-mosaic__bar">
+                        <GripVertical size={12} className="dgm-mosaic__grip" />
+                        <span className="dgm-mosaic__title">{design.title || "Untitled"}</span>
+                      </div>
+                      <div className="dgm-mosaic__actions">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => toggleFeatured(design)}
+                          className={`dgm__icon-btn${design.metadata?.featured ? " dgm__icon-btn--featured" : ""}`}
+                          title="Featured"
+                        >
+                          <Star size={13} fill={design.metadata?.featured ? "currentColor" : "none"} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setEditing(design)}
+                          className="dgm__icon-btn"
+                          title="Edit"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => duplicateDesign(design.id)}
+                          className="dgm__icon-btn"
+                          title="Duplicate"
+                        >
+                          <Copy size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => deleteDesigns([design.id])}
+                          className="dgm__icon-btn dgm__icon-btn--danger"
+                          title="Delete"
+                        >
+                          {busy ? (
+                            <Loader2 size={13} className="animate-spin" />
+                          ) : (
+                            <Trash2 size={13} />
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  );
                 }}
               />
-              <button
-                type="button"
-                disabled={uploading}
-                onClick={() => fileRef.current?.click()}
-                onDragEnter={(e) => {
-                  e.preventDefault();
-                  if (!uploading) setDragging(true);
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false);
-                }}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragging(false);
-                  if (!uploading) void runUpload(Array.from(e.dataTransfer.files || []));
-                }}
-                className={`dgm__dropzone${dragging ? " dgm__dropzone--active" : ""}`}
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 size={22} className="animate-spin text-purple-400" />
-                    <span>{uploadProgress || "Uploading…"}</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload size={22} className="text-purple-400" />
-                    <span>Drop images here or click to browse</span>
-                    <span className="dgm__dropzone-hint">PNG, JPG, JPEG, WebP — any dimensions</span>
-                  </>
-                )}
-              </button>
-            </div>
-          )}
-
-          <p className="dgm__count">
-            {filtered.length} design{filtered.length === 1 ? "" : "s"}
-            {sort === "order" ? " — drag to reorder" : ""}
-          </p>
-
-          <div className="dgm__grid">
-            {filtered.map((design) => {
-              const busy = pendingIds.has(design.id);
-              const cat = design.category_id ? categoryMap.get(design.category_id) : null;
-              return (
-                <article
-                  key={design.id}
-                  draggable={sort === "order" && !busy}
-                  onDragStart={() => setDragId(design.id)}
-                  onDragEnd={() => setDragId(null)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => onDropReorder(design.id)}
-                  className={`dgm__card${dragId === design.id ? " dgm__card--dragging" : ""}${selected.has(design.id) ? " dgm__card--selected" : ""}`}
-                >
-                  <div className="dgm__card-check">
-                    <button
-                      type="button"
-                      onClick={() => toggleSelect(design.id)}
-                      className={`dgm__checkbox${selected.has(design.id) ? " dgm__checkbox--on" : ""}`}
-                      aria-label="Select design"
-                    >
-                      {selected.has(design.id) ? <Check size={12} /> : null}
-                    </button>
-                  </div>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={design.media_url} alt={design.title} className="dgm__card-img" draggable={false} />
-                  <div className="dgm__card-bar">
-                    <span className="dgm__card-grip" aria-hidden>
-                      <GripVertical size={12} />
-                    </span>
-                    <div className="dgm__card-info">
-                      <p className="dgm__card-title">{design.title || "Untitled"}</p>
-                      <p className="dgm__card-cat">{cat?.name || "Uncategorized"}</p>
-                    </div>
-                  </div>
-                  <div className="dgm__card-actions">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => toggleFeatured(design)}
-                      className={`dgm__icon-btn${design.metadata?.featured ? " dgm__icon-btn--featured" : ""}`}
-                      title="Featured"
-                    >
-                      <Star size={13} fill={design.metadata?.featured ? "currentColor" : "none"} />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => setEditing(design)}
-                      className="dgm__icon-btn"
-                      title="Edit"
-                    >
-                      <Pencil size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => duplicateDesign(design.id)}
-                      className="dgm__icon-btn"
-                      title="Duplicate"
-                    >
-                      <Copy size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => deleteDesigns([design.id])}
-                      className="dgm__icon-btn dgm__icon-btn--danger"
-                      title="Delete"
-                    >
-                      {busy ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
+            ) : (
+              <div className="dgm__empty">
+                <p>No designs in this category yet. Upload to add work here.</p>
+              </div>
+            )}
           </div>
-
-          {filtered.length === 0 && (
-            <div className="dgm__empty">
-              <p>No designs yet. Upload your first design above.</p>
-            </div>
-          )}
-        </>
+        </div>
       )}
 
       {tab === "categories" && (
