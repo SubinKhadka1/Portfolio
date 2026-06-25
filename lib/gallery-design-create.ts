@@ -94,7 +94,7 @@ function buildGalleryDesignPayload({
   prepared,
 }: {
   mediaUrl: string;
-  categoryId: string;
+  categoryId: string | null;
   sortOrder: number;
   title?: string;
   prepared: PreparedUpload;
@@ -198,7 +198,7 @@ function sleep(ms: number) {
 
 async function saveGalleryDesignsBatch(
   payloads: GalleryDesignInput[],
-  categoryId: string
+  categoryId: string | null
 ): Promise<GalleryDesign[]> {
   if (payloads.length === 0) return [];
 
@@ -216,8 +216,8 @@ async function saveGalleryDesignsBatch(
         if (!res.ok || !data.id) {
           throw new Error(data.error || "Failed to create design");
         }
-        if (data.category_id !== categoryId) {
-          throw new Error("Design was saved to the wrong section. Please refresh and try again.");
+        if ((data.category_id ?? null) !== categoryId) {
+          throw new Error("Design was saved to the wrong category. Please refresh and try again.");
         }
         return [data];
       }
@@ -232,9 +232,9 @@ async function saveGalleryDesignsBatch(
       if (!res.ok || !Array.isArray(data)) {
         throw new Error(!Array.isArray(data) && data.error ? data.error : "Failed to save designs");
       }
-      const wrongSection = data.find((design) => design.category_id !== categoryId);
+      const wrongSection = data.find((design) => (design.category_id ?? null) !== categoryId);
       if (wrongSection) {
-        throw new Error("Some designs were saved to the wrong section. Please refresh and try again.");
+        throw new Error("Some designs were saved to the wrong category. Please refresh and try again.");
       }
       return data;
     } catch (err) {
@@ -253,7 +253,7 @@ async function saveDesignsOneByOne({
   onProgress,
 }: {
   staged: { prepared: PreparedUpload; url: string }[];
-  categoryId: string;
+  categoryId: string | null;
   startSortOrder: number;
   onProgress?: (message: string) => void;
 }): Promise<{ created: GalleryDesign[]; failed: { name: string; error: string }[] }> {
@@ -300,7 +300,7 @@ export async function uploadDesignsToSection({
   onProgress,
 }: {
   files: File[];
-  categoryId: string;
+  categoryId: string | null;
   startSortOrder: number;
   onProgress?: (message: string) => void;
 }): Promise<SectionUploadResult> {

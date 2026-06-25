@@ -216,6 +216,79 @@ export async function deleteLocalGalleryDesign(id: string): Promise<boolean> {
   return deleted;
 }
 
+export async function deleteLocalGalleryDesigns(ids: string[]): Promise<number> {
+  const idSet = new Set(ids);
+  let deleted = 0;
+
+  await updatePortfolioStore((store) => {
+    const before = store.gallery_designs.length;
+    store.gallery_designs = store.gallery_designs.filter((d) => !idSet.has(d.id));
+    deleted = before - store.gallery_designs.length;
+  });
+
+  return deleted;
+}
+
+export async function bulkUpdateLocalGalleryDesigns(
+  ids: string[],
+  patch: Partial<GalleryDesignInput>
+): Promise<GalleryDesign[]> {
+  const idSet = new Set(ids);
+  const updated: GalleryDesign[] = [];
+
+  await updatePortfolioStore((store) => {
+    const now = new Date().toISOString();
+    store.gallery_designs = store.gallery_designs.map((d) => {
+      if (!idSet.has(d.id)) return d;
+      const next: GalleryDesign = {
+        ...d,
+        ...(patch.title !== undefined && { title: patch.title }),
+        ...(patch.description !== undefined && { description: patch.description }),
+        ...(patch.media_url !== undefined && { media_url: patch.media_url }),
+        ...(patch.category_id !== undefined && { category_id: patch.category_id }),
+        ...(patch.published !== undefined && { published: patch.published }),
+        ...(patch.sort_order !== undefined && { sort_order: patch.sort_order }),
+        ...(patch.metadata !== undefined && {
+          metadata: { ...d.metadata, ...patch.metadata },
+        }),
+        updated_at: now,
+      };
+      updated.push(next);
+      return next;
+    });
+  });
+
+  return updated;
+}
+
+export async function duplicateLocalGalleryDesign(id: string): Promise<GalleryDesign | null> {
+  const source = await getLocalGalleryDesign(id);
+  if (!source) return null;
+
+  const now = new Date().toISOString();
+  const newId = randomUUID();
+  let created!: GalleryDesign;
+
+  await updatePortfolioStore((store) => {
+    const sortOrder = nextGallerySortOrder(store);
+    created = {
+      id: newId,
+      title: source.title ? `${source.title} (Copy)` : "Untitled (Copy)",
+      description: source.description,
+      media_url: source.media_url,
+      category_id: source.category_id,
+      sort_order: sortOrder,
+      published: source.published,
+      metadata: { ...source.metadata },
+      created_at: now,
+      updated_at: now,
+    };
+    store.gallery_designs.push(created);
+  });
+
+  return created;
+}
+
 export async function reorderLocalGalleryDesigns(
   items: { id: string; sort_order: number }[]
 ): Promise<void> {

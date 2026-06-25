@@ -1,4 +1,4 @@
-import GalleryManager from "@/components/admin/GalleryManager";
+import DesignGalleryManager from "@/components/admin/DesignGalleryManager";
 import { getCategories } from "@/lib/categories";
 import { getLocalGalleryDesigns } from "@/lib/design-modules-store";
 import { getSiteSettings } from "@/lib/site-settings-read";
@@ -15,13 +15,14 @@ export default async function AdminGalleryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Design Gallery Editor</h1>
+        <h1 className="text-2xl font-bold text-white">Design Gallery Manager</h1>
         <p className="text-zinc-500 text-sm mt-1 max-w-2xl">
-          Manage the full <span className="text-zinc-300">/designs</span> page — sections, headings,
-          and which flyers appear in each category. Images preview exactly as visitors see them.
+          Upload, organize, and publish designs for the{" "}
+          <span className="text-zinc-300">/designs</span> page. This is independent from homepage
+          marquee and other portfolio sections.
         </p>
       </div>
-      <GalleryManager
+      <DesignGalleryManager
         initialCategories={categories}
         initialDesigns={designs}
         gallerySettings={{

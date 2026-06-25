@@ -24,6 +24,9 @@ export type DesignImageMetadata = {
 export type GalleryDesignMetadata = DesignImageMetadata & {
   /** When true, design is kept in admin but hidden from the public gallery page. */
   galleryHidden?: boolean;
+  clientName?: string;
+  year?: number;
+  featured?: boolean;
 };
 
 export type GalleryDesign = {
@@ -146,6 +149,7 @@ export type DashboardStats = {
 export type DesignItem = {
   id: string;
   title: string;
+  description?: string;
   image: string;
   color: string;
   aspectRatio?: "square" | "portrait";
@@ -157,6 +161,10 @@ export type DesignItem = {
   categorySlug?: string;
   imageWidth?: number;
   imageHeight?: number;
+  clientName?: string;
+  year?: number;
+  featured?: boolean;
+  createdAt?: string;
 };
 
 export type VideoItem = {

@@ -186,6 +186,8 @@ export async function getDesignGalleryPageData() {
       galleryDesignToDesignItem(d, d.category_id ? byId.get(d.category_id) : null)
     );
     return {
+      designs: items,
+      categories,
       sections: groupDesignsByCategory(items, categories),
       settings,
       totalDesigns: items.length,
@@ -205,6 +207,8 @@ export async function getDesignGalleryPageData() {
       galleryDesignToDesignItem(d, d.category_id ? byId.get(d.category_id) : null)
     );
     return {
+      designs: items,
+      categories,
       sections: groupDesignsByCategory(items, categories),
       settings,
       totalDesigns: items.length,
@@ -221,6 +225,8 @@ export async function getDesignGalleryPageData() {
     projectToDesign(p, p.category_id ? byId.get(p.category_id) : null)
   );
   return {
+    designs,
+    categories,
     sections: groupDesignsByCategory(designs, categories),
     settings,
     totalDesigns: designs.length,

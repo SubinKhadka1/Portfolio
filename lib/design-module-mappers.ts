@@ -103,6 +103,7 @@ export function galleryDesignToDesignItem(
   return {
     id: design.id,
     title: design.title,
+    description: design.description,
     image: design.media_url,
     color: design.metadata?.color || "from-purple-700 to-indigo-900",
     aspectRatio:
@@ -115,6 +116,10 @@ export function galleryDesignToDesignItem(
     categorySlug: category?.slug,
     imageWidth: design.metadata?.imageWidth,
     imageHeight: design.metadata?.imageHeight,
+    clientName: design.metadata?.clientName,
+    year: design.metadata?.year,
+    featured: design.metadata?.featured,
+    createdAt: design.created_at,
   };
 }
 
