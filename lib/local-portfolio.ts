@@ -4,7 +4,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { isNextBuildPhase } from "@/lib/is-build-time";
 import { blobJsonExists, readJsonFile, writeJsonFile } from "@/lib/json-store";
-import { isBlobStorageEnabled, isVercelProduction } from "@/lib/storage-mode";
+import { isBlobStorageEnabled } from "@/lib/storage-mode";
 import { staticProjectsForAdmin } from "@/lib/seed";
 import { marqueeSortOrder, clampMarqueeRow } from "@/lib/marquee";
 import {
@@ -214,6 +214,9 @@ function cloneStore(store: PortfolioStore): PortfolioStore {
   return JSON.parse(JSON.stringify(store)) as PortfolioStore;
 }
 
+/** Serialize portfolio writes so concurrent admin actions cannot overwrite each other. */
+let portfolioWriteLock: Promise<unknown> = Promise.resolve();
+
 async function loadPortfolioStore(): Promise<PortfolioStore> {
   const fromBlob = await readJsonFile<Partial<PortfolioStore>>(PORTFOLIO_JSON);
   if (fromBlob) return migrateStore(normalizePortfolioStore(fromBlob));
@@ -265,32 +268,25 @@ async function savePortfolioStore(store: PortfolioStore) {
 async function updatePortfolioStore(
   mutate: (store: PortfolioStore) => void | Promise<void>
 ): Promise<PortfolioStore> {
-  const store = cloneStore(await loadPortfolioStore());
-  await mutate(store);
-  await savePortfolioStore(store);
-  return store;
+  const run = async () => {
+    const store = cloneStore(await loadPortfolioStore());
+    await mutate(store);
+    await savePortfolioStore(store);
+    return store;
+  };
+
+  const result = portfolioWriteLock.then(run, run);
+  portfolioWriteLock = result.then(
+    () => undefined,
+    () => undefined
+  );
+  return result;
 }
 
 export { updatePortfolioStore };
 
 async function ensureStore(): Promise<PortfolioStore> {
-  const store = await loadPortfolioStore();
-  const raw = await readJsonFile<PortfolioStore>(PORTFOLIO_JSON);
-
-  if (raw) {
-    const before = JSON.stringify(migrateStore(raw));
-    const after = JSON.stringify(store);
-    if (before !== after) {
-      await savePortfolioStore(store);
-    }
-  } else if (isBlobStorageEnabled() && !isVercelProduction()) {
-    const exists = await blobJsonExists(PORTFOLIO_JSON);
-    if (!exists) {
-      await savePortfolioStore(store);
-    }
-  }
-
-  return store;
+  return loadPortfolioStore();
 }
 
 export async function ensurePortfolioStore(): Promise<PortfolioStore> {

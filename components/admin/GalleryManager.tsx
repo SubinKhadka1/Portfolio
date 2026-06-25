@@ -54,6 +54,7 @@ type DragOverTarget = {
 function GalleryDesignCard({
   design,
   busy,
+  cardBusy,
   categories,
   currentCategoryId,
   isDragging,
@@ -71,6 +72,7 @@ function GalleryDesignCard({
 }: {
   design: GalleryDesign;
   busy: boolean;
+  cardBusy: boolean;
   categories: Category[];
   currentCategoryId: string | null;
   isDragging: boolean;
@@ -86,9 +88,11 @@ function GalleryDesignCard({
   onDragLeave: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
 }) {
+  const disabled = busy || cardBusy;
+
   return (
     <article
-      draggable={!busy}
+      draggable={!disabled}
       onDragStart={(e) => {
         const target = e.target as HTMLElement;
         if (target.closest("button, select, a, input, textarea")) {
@@ -116,7 +120,7 @@ function GalleryDesignCard({
       />
       <button
         type="button"
-        disabled={busy}
+        disabled={disabled}
         onClick={(e) => {
           e.stopPropagation();
           onRemoveFromSection();
@@ -143,7 +147,7 @@ function GalleryDesignCard({
         </Link>
         <button
           type="button"
-          disabled={busy}
+          disabled={disabled}
           onClick={onFeatureHomepage}
           className="admin-gallery-card__btn"
           title="Feature on Homepage (creates independent copy)"
@@ -152,7 +156,7 @@ function GalleryDesignCard({
         </button>
         <select
           value={currentCategoryId || ""}
-          disabled={busy}
+          disabled={disabled}
           onChange={(e) => onAssignCategory(e.target.value || null)}
           className="admin-gallery-card__select"
           aria-label="Move to section"
@@ -166,7 +170,7 @@ function GalleryDesignCard({
         </select>
         <button
           type="button"
-          disabled={busy}
+          disabled={disabled}
           onClick={onHide}
           className="admin-gallery-card__btn admin-gallery-card__btn--muted"
           title="Hide from gallery page"
@@ -175,7 +179,7 @@ function GalleryDesignCard({
         </button>
         <button
           type="button"
-          disabled={busy}
+          disabled={disabled}
           onClick={onDelete}
           className="admin-gallery-card__btn admin-gallery-card__btn--muted"
           title="Delete from gallery only"
@@ -210,11 +214,21 @@ export default function GalleryManager({
   const [pickerSectionId, setPickerSectionId] = useState<string | null>(null);
   const [drag, setDrag] = useState<GalleryDrag | null>(null);
   const [dragOver, setDragOver] = useState<DragOverTarget | null>(null);
+  const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
 
   const grouped = useMemo(
     () => groupDesignsForGalleryAdmin(designs, categories),
     [designs, categories]
   );
+
+  function setDesignPending(id: string, pending: boolean) {
+    setPendingIds((prev) => {
+      const next = new Set(prev);
+      if (pending) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
 
   async function refetchAll() {
     const [catRes, designRes] = await Promise.all([
@@ -233,6 +247,7 @@ export default function GalleryManager({
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
+      cache: "no-store",
     });
     const data = await parseResponseJson<GalleryDesign | { error?: string }>(res);
     if (!res.ok) {
@@ -256,7 +271,6 @@ export default function GalleryManager({
     });
     const data = await parseResponseJson<{ error?: string }>(res);
     if (!res.ok) throw new Error(data.error || "Failed to save gallery order");
-    await refetchAll();
   }
 
   async function deleteFromGallery(design: GalleryDesign) {
@@ -267,19 +281,24 @@ export default function GalleryManager({
     ) {
       return;
     }
-    setBusy(true);
+
+    const previous = designs;
+    setDesigns((prev) => prev.filter((d) => d.id !== design.id));
+    setDesignPending(design.id, true);
     setError("");
     try {
-      const res = await fetch(`/api/gallery-designs/${design.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/gallery-designs/${design.id}`, {
+        method: "DELETE",
+        cache: "no-store",
+      });
       const data = await parseResponseJson<{ error?: string }>(res);
       if (!res.ok) throw new Error(data.error || "Failed to delete design");
-      setDesigns((prev) => prev.filter((d) => d.id !== design.id));
       setMessage("Design removed from gallery. Homepage content unchanged.");
-      router.refresh();
     } catch (err) {
+      setDesigns(previous);
       setError(err instanceof Error ? err.message : "Failed to delete design");
     } finally {
-      setBusy(false);
+      setDesignPending(design.id, false);
     }
   }
 
@@ -402,7 +421,15 @@ export default function GalleryManager({
   }
 
   async function moveToUnassigned(design: GalleryDesign) {
-    setBusy(true);
+    const previous = designs.find((d) => d.id === design.id);
+    setDesigns((prev) =>
+      prev.map((d) =>
+        d.id === design.id
+          ? { ...d, category_id: null, metadata: { ...d.metadata, galleryHidden: false } }
+          : d
+      )
+    );
+    setDesignPending(design.id, true);
     setError("");
     try {
       await updateDesign(design.id, {
@@ -410,18 +437,28 @@ export default function GalleryManager({
         metadata: { ...design.metadata, galleryHidden: false },
       });
       setMessage("Moved to Unassigned.");
-      await refetchAll();
     } catch (err) {
+      if (previous) {
+        setDesigns((prev) => prev.map((d) => (d.id === design.id ? previous : d)));
+      }
       setError(err instanceof Error ? err.message : "Failed to move design");
     } finally {
-      setBusy(false);
+      setDesignPending(design.id, false);
     }
   }
 
   async function assignToSection(design: GalleryDesign, categoryId: string) {
     if (design.category_id === categoryId) return;
 
-    setBusy(true);
+    const previous = designs.find((d) => d.id === design.id);
+    setDesigns((prev) =>
+      prev.map((d) =>
+        d.id === design.id
+          ? { ...d, category_id: categoryId, metadata: { ...d.metadata, galleryHidden: false } }
+          : d
+      )
+    );
+    setDesignPending(design.id, true);
     setError("");
     try {
       const updated = await updateDesign(design.id, {
@@ -431,12 +468,14 @@ export default function GalleryManager({
       if (updated.category_id !== categoryId) {
         throw new Error("Section assignment did not save. Please try again.");
       }
-      setMessage(`Added to this section only. Drag to reorder when ready.`);
-      await refetchAll();
+      setMessage("Added to this section only. Drag to reorder when ready.");
     } catch (err) {
+      if (previous) {
+        setDesigns((prev) => prev.map((d) => (d.id === design.id ? previous : d)));
+      }
       setError(err instanceof Error ? err.message : "Failed to assign design");
     } finally {
-      setBusy(false);
+      setDesignPending(design.id, false);
     }
   }
 
@@ -446,7 +485,15 @@ export default function GalleryManager({
     sectionName?: string
   ) {
     if (sectionCategoryId) {
-      setBusy(true);
+      const previous = designs.find((d) => d.id === design.id);
+      setDesigns((prev) =>
+        prev.map((d) =>
+          d.id === design.id
+            ? { ...d, category_id: null, metadata: { ...d.metadata, galleryHidden: false } }
+            : d
+        )
+      );
+      setDesignPending(design.id, true);
       setError("");
       try {
         await updateDesign(design.id, {
@@ -454,11 +501,13 @@ export default function GalleryManager({
           metadata: { ...design.metadata, galleryHidden: false },
         });
         setMessage(`Removed from ${sectionName || "section"}.`);
-        await refetchAll();
       } catch (err) {
+        if (previous) {
+          setDesigns((prev) => prev.map((d) => (d.id === design.id ? previous : d)));
+        }
         setError(err instanceof Error ? err.message : "Failed to remove design");
       } finally {
-        setBusy(false);
+        setDesignPending(design.id, false);
       }
       return;
     }
@@ -466,34 +515,54 @@ export default function GalleryManager({
   }
 
   async function hideFromGallery(design: GalleryDesign) {
-    setBusy(true);
+    const previous = designs.find((d) => d.id === design.id);
+    setDesigns((prev) =>
+      prev.map((d) =>
+        d.id === design.id
+          ? { ...d, metadata: { ...d.metadata, galleryHidden: true } }
+          : d
+      )
+    );
+    setDesignPending(design.id, true);
     setError("");
     try {
       await updateDesign(design.id, {
         metadata: { ...design.metadata, galleryHidden: true },
       });
       setMessage("Design hidden from gallery.");
-      router.refresh();
     } catch (err) {
+      if (previous) {
+        setDesigns((prev) => prev.map((d) => (d.id === design.id ? previous : d)));
+      }
       setError(err instanceof Error ? err.message : "Failed to hide design");
     } finally {
-      setBusy(false);
+      setDesignPending(design.id, false);
     }
   }
 
   async function restoreToGallery(design: GalleryDesign) {
-    setBusy(true);
+    const previous = designs.find((d) => d.id === design.id);
+    setDesigns((prev) =>
+      prev.map((d) =>
+        d.id === design.id
+          ? { ...d, metadata: { ...d.metadata, galleryHidden: false } }
+          : d
+      )
+    );
+    setDesignPending(design.id, true);
     setError("");
     try {
       await updateDesign(design.id, {
         metadata: { ...design.metadata, galleryHidden: false },
       });
       setMessage("Design restored to gallery.");
-      router.refresh();
     } catch (err) {
+      if (previous) {
+        setDesigns((prev) => prev.map((d) => (d.id === design.id ? previous : d)));
+      }
       setError(err instanceof Error ? err.message : "Failed to restore design");
     } finally {
-      setBusy(false);
+      setDesignPending(design.id, false);
     }
   }
 
@@ -608,10 +677,6 @@ export default function GalleryManager({
       setError("");
     } else if (result.failed.length) {
       setError(result.failed[0]?.error || "Upload failed");
-    }
-
-    if (result.created.length) {
-      void refetchAll();
     }
   }
 
@@ -831,6 +896,7 @@ export default function GalleryManager({
                     key={design.id}
                     design={design}
                     busy={busy}
+                    cardBusy={pendingIds.has(design.id)}
                     categories={categories}
                     currentCategoryId={cat?.id ?? null}
                     isDragging={isDragging}
