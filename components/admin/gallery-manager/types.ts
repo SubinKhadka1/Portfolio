@@ -12,10 +12,24 @@ export type SortMode = "order" | "newest" | "oldest" | "featured";
 export type GridSize = "small" | "medium" | "large";
 
 export const GRID_COLUMN_WIDTH: Record<GridSize, number> = {
-  small: 180,
-  medium: 260,
-  large: 340,
+  small: 160,
+  medium: 240,
+  large: 320,
 };
+
+export const ZOOM_MIN = 120;
+export const ZOOM_MAX = 400;
+
+export function zoomToColumnWidth(zoom: number) {
+  const t = Math.min(100, Math.max(0, zoom)) / 100;
+  return Math.round(ZOOM_MIN + t * (ZOOM_MAX - ZOOM_MIN));
+}
+
+export function gridSizeToZoom(size: GridSize) {
+  if (size === "small") return 20;
+  if (size === "large") return 80;
+  return 50;
+}
 
 export const PAGE_SIZE = 48;
 
@@ -40,7 +54,10 @@ export function reorderList<T>(items: T[], from: number, to: number) {
 
 export function isImageFile(file: File) {
   const ext = file.name.split(".").pop()?.toLowerCase() || "";
-  return file.type.startsWith("image/") || ["jpg", "jpeg", "png", "webp"].includes(ext);
+  return (
+    file.type.startsWith("image/") ||
+    ["jpg", "jpeg", "png", "webp", "svg"].includes(ext)
+  );
 }
 
 export function nextSortOrder(designs: { sort_order: number }[]) {

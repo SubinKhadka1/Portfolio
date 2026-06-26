@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { GridSize } from "@/components/admin/gallery-manager/types";
-import { GRID_COLUMN_WIDTH } from "@/components/admin/gallery-manager/types";
 
 function reorderList<T>(items: T[], from: number, to: number) {
   const next = [...items];
@@ -13,7 +11,7 @@ function reorderList<T>(items: T[], from: number, to: number) {
 
 export default function GalleryMasonryGrid<T extends { id: string }>({
   items,
-  gridSize,
+  columnWidth,
   disabled,
   onReorder,
   onLoadMore,
@@ -21,7 +19,7 @@ export default function GalleryMasonryGrid<T extends { id: string }>({
   renderCard,
 }: {
   items: T[];
-  gridSize: GridSize;
+  columnWidth: number;
   disabled?: boolean;
   onReorder?: (ordered: T[]) => void;
   onLoadMore?: () => void;
@@ -45,20 +43,17 @@ export default function GalleryMasonryGrid<T extends { id: string }>({
     return () => observer.disconnect();
   }, [onLoadMore, hasMore, items.length]);
 
-  const colWidth = GRID_COLUMN_WIDTH[gridSize];
+  const colWidth = columnWidth;
 
   return (
     <>
-      <div
-        className="gm-masonry"
-        style={{ columnWidth: `${colWidth}px` }}
-      >
+      <div className="be-masonry" style={{ columnWidth: `${colWidth}px` }}>
         {items.map((item, index) => {
           const dragging = dragId === item.id;
           return (
             <div
               key={item.id}
-              className={`gm-masonry__item${dragging ? " gm-masonry__item--dragging" : ""}`}
+              className={`be-masonry__item${dragging ? " be-masonry__item--dragging" : ""}`}
               draggable={!disabled && !!onReorder}
               onDragStart={(e) => {
                 const target = e.target as HTMLElement;
@@ -86,7 +81,7 @@ export default function GalleryMasonryGrid<T extends { id: string }>({
           );
         })}
       </div>
-      {hasMore ? <div ref={sentinelRef} className="gm-masonry__sentinel" aria-hidden /> : null}
+      {hasMore ? <div ref={sentinelRef} className="be-masonry__sentinel" aria-hidden /> : null}
     </>
   );
 }

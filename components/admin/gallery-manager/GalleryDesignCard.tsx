@@ -1,112 +1,83 @@
 "use client";
 
-import {
-  Copy,
-  Eye,
-  FolderInput,
-  ImageIcon,
-  Loader2,
-  Pencil,
-  Star,
-  Trash2,
-} from "lucide-react";
-import { formatGalleryDate } from "@/components/admin/gallery-manager/types";
-import type { Category, GalleryDesign } from "@/lib/types/database";
+import { Copy, GripVertical, ImageIcon, Pencil, Star, Trash2 } from "lucide-react";
+import type { GalleryDesign } from "@/lib/types/database";
 
 export default function GalleryDesignCard({
   design,
-  category,
-  bulkMode,
-  selected,
+  active,
   busy,
-  onToggleSelect,
+  onSelect,
   onEdit,
   onReplace,
   onDuplicate,
   onDelete,
-  onPreview,
-  onMoveCategory,
   onToggleFeatured,
+  onDragHandle,
 }: {
   design: GalleryDesign;
-  category?: Category | null;
-  bulkMode: boolean;
-  selected: boolean;
+  active: boolean;
   busy: boolean;
-  onToggleSelect: () => void;
+  onSelect: () => void;
   onEdit: () => void;
   onReplace: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
-  onPreview: () => void;
-  onMoveCategory: () => void;
   onToggleFeatured: () => void;
+  onDragHandle?: () => void;
 }) {
   return (
-    <article className={`gm-card${selected ? " gm-card--selected" : ""}${busy ? " gm-card--busy" : ""}`}>
-      {bulkMode && (
-        <label className="gm-card__select">
-          <input type="checkbox" checked={selected} onChange={onToggleSelect} />
-        </label>
-      )}
-
-      <div className="gm-card__media">
+    <article
+      className={`be-card${active ? " be-card--active" : ""}${busy ? " be-card--busy" : ""}`}
+      onClick={onSelect}
+      onKeyDown={(e) => e.key === "Enter" && onSelect()}
+      role="button"
+      tabIndex={0}
+    >
+      <div className="be-card__media">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={design.media_url}
           alt={design.title}
           loading="lazy"
-          className="gm-card__img"
+          className="be-card__img"
           draggable={false}
         />
         {design.metadata?.featured ? (
-          <span className="gm-card__featured" aria-label="Featured">
-            <Star size={11} fill="currentColor" />
+          <span className="be-card__star" aria-hidden>
+            <Star size={10} fill="currentColor" />
           </span>
         ) : null}
-        {!design.published ? <span className="gm-card__draft">Draft</span> : null}
-        <div className="gm-card__overlay">
-          <div className="gm-card__actions">
-            <button type="button" onClick={onEdit} title="Edit">
-              <Pencil size={15} />
-            </button>
-            <button type="button" onClick={onReplace} title="Replace image">
-              <ImageIcon size={15} />
-            </button>
-            <button type="button" onClick={onDuplicate} title="Duplicate">
-              <Copy size={15} />
-            </button>
-            <button type="button" onClick={onDelete} title="Delete">
-              <Trash2 size={15} />
-            </button>
-            <button type="button" onClick={onPreview} title="Preview">
-              <Eye size={15} />
-            </button>
-            <button type="button" onClick={onMoveCategory} title="Move category">
-              <FolderInput size={15} />
-            </button>
+        <div className="be-card__overlay">
+          <div className="be-card__toolbar">
             <button
               type="button"
-              onClick={onToggleFeatured}
-              title={design.metadata?.featured ? "Unfeature" : "Feature"}
-              className={design.metadata?.featured ? "gm-card__action--star" : ""}
+              title="Drag"
+              className="be-card__tool be-card__tool--grip"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                onDragHandle?.();
+              }}
             >
-              <Star size={15} fill={design.metadata?.featured ? "currentColor" : "none"} />
+              <GripVertical size={14} />
+            </button>
+            <button type="button" title="Edit" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+              <Pencil size={14} />
+            </button>
+            <button type="button" title="Replace" onClick={(e) => { e.stopPropagation(); onReplace(); }}>
+              <ImageIcon size={14} />
+            </button>
+            <button type="button" title="Feature" onClick={(e) => { e.stopPropagation(); onToggleFeatured(); }}>
+              <Star size={14} fill={design.metadata?.featured ? "currentColor" : "none"} />
+            </button>
+            <button type="button" title="Duplicate" onClick={(e) => { e.stopPropagation(); onDuplicate(); }}>
+              <Copy size={14} />
+            </button>
+            <button type="button" title="Delete" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+              <Trash2 size={14} />
             </button>
           </div>
-        </div>
-        {busy ? (
-          <div className="gm-card__loading">
-            <Loader2 size={20} className="animate-spin" />
-          </div>
-        ) : null}
-      </div>
-
-      <div className="gm-card__body">
-        <h3 className="gm-card__title">{design.title || "Untitled"}</h3>
-        <div className="gm-card__meta">
-          {category ? <span className="gm-card__badge">{category.name}</span> : null}
-          <time className="gm-card__date">{formatGalleryDate(design.created_at)}</time>
         </div>
       </div>
     </article>
