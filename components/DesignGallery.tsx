@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowUpRight, Search, Star } from "lucide-react";
+import { ArrowLeft, Search, Star } from "lucide-react";
 import Link from "next/link";
 import type { Category, DesignItem } from "@/lib/types/database";
 import { groupDesignsByCategory } from "@/lib/design-gallery";
@@ -59,16 +59,9 @@ function GalleryCard({
         draggable={false}
       />
       <div className="gallery-card__overlay">
-        <div className="gallery-card__overlay-inner">
-          <h3 className="gallery-card__title">{design.title}</h3>
-          {design.categoryName ? (
-            <p className="gallery-card__category">{design.categoryName}</p>
-          ) : null}
-          <span className="gallery-card__cta">
-            View Project
-            <ArrowUpRight size={14} />
-          </span>
-        </div>
+        <span className="gallery-card__save">
+          View
+        </span>
       </div>
       {design.featured ? (
         <span className="gallery-card__featured" aria-label="Featured">
@@ -92,7 +85,7 @@ function JustifiedSection({
 
   return (
     <section className="gallery-section">
-      {title ? <h2 className="gallery-section__title">{title}</h2> : null}
+      {title ? <h2 className="gallery-section__title">{title.toUpperCase()}</h2> : null}
       <DesignGalleryJustifiedGrid
         items={designs}
         className="gallery-justified"

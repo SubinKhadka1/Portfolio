@@ -5,30 +5,33 @@ import type { GalleryDesign } from "@/lib/types/database";
 
 export default function GalleryDesignCard({
   design,
+  height,
   active,
   busy,
+  editMode,
   onSelect,
   onEdit,
   onReplace,
   onDuplicate,
   onDelete,
   onToggleFeatured,
-  onDragHandle,
 }: {
   design: GalleryDesign;
+  height?: number;
   active: boolean;
   busy: boolean;
+  editMode?: boolean;
   onSelect: () => void;
   onEdit: () => void;
   onReplace: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
   onToggleFeatured: () => void;
-  onDragHandle?: () => void;
 }) {
   return (
     <article
-      className={`be-card${active ? " be-card--active" : ""}${busy ? " be-card--busy" : ""}`}
+      className={`be-card be-card--justified${active ? " be-card--active" : ""}${busy ? " be-card--busy" : ""}${editMode ? " be-card--edit" : ""}`}
+      style={height ? { height } : undefined}
       onClick={onSelect}
       onKeyDown={(e) => e.key === "Enter" && onSelect()}
       role="button"
@@ -50,18 +53,11 @@ export default function GalleryDesignCard({
         ) : null}
         <div className="be-card__overlay">
           <div className="be-card__toolbar">
-            <button
-              type="button"
-              title="Drag"
-              className="be-card__tool be-card__tool--grip"
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                onDragHandle?.();
-              }}
-            >
-              <GripVertical size={14} />
-            </button>
+            {editMode ? (
+              <span className="be-card__tool be-card__tool--grip" title="Drag to reorder">
+                <GripVertical size={14} />
+              </span>
+            ) : null}
             <button type="button" title="Edit" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
               <Pencil size={14} />
             </button>

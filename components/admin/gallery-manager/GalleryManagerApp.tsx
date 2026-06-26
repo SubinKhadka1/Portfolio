@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
+  LayoutGrid,
   Loader2,
   Minus,
   Plus,
@@ -10,18 +11,18 @@ import {
   X,
 } from "lucide-react";
 import GalleryDesignCard from "@/components/admin/gallery-manager/GalleryDesignCard";
-import GalleryMasonryGrid from "@/components/admin/gallery-manager/GalleryMasonryGrid";
 import GalleryPropertiesPanel from "@/components/admin/gallery-manager/GalleryPropertiesPanel";
+import DesignGalleryJustifiedGrid from "@/components/DesignGalleryJustifiedGrid";
 import {
-  PAGE_SIZE,
   gridSizeToZoom,
   isImageFile,
   nextSortOrder,
-  zoomToColumnWidth,
+  zoomToRowHeights,
   type GridSize,
   type SortMode,
 } from "@/components/admin/gallery-manager/types";
 import { prepareGalleryDesignUpload } from "@/lib/compress-design-image";
+import { groupGalleryDesignsByCategory } from "@/lib/design-gallery";
 import { uploadDesignsToSection } from "@/lib/gallery-design-create";
 import { buildGalleryDesignReorderItems } from "@/lib/reorder-payload";
 import { parseResponseJson } from "@/lib/parse-response";
@@ -50,9 +51,9 @@ export default function GalleryManagerApp({
   const [sort] = useState<SortMode>("order");
   const [gridLayout, setGridLayout] = useState<GridSize>("medium");
   const [zoom, setZoom] = useState(gridSizeToZoom("medium"));
+  const [editGrid, setEditGrid] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [panelDraft, setPanelDraft] = useState<GalleryDesign | null>(null);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [showUpload, setShowUpload] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
@@ -67,7 +68,7 @@ export default function GalleryManagerApp({
   const replaceDesignId = useRef<string | null>(null);
 
   const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
-  const columnWidth = zoomToColumnWidth(zoom);
+  const packOptions = useMemo(() => zoomToRowHeights(zoom), [zoom]);
 
   const isDirty = useMemo(() => {
     if (JSON.stringify(designs) !== snapshotRef.current) return true;
@@ -125,8 +126,35 @@ export default function GalleryManagerApp({
     return [...list].sort((a, b) => a.sort_order - b.sort_order);
   }, [designs, search, categoryFilter, categoryMap]);
 
-  const visible = filtered.slice(0, visibleCount);
-  const hasMore = visibleCount < filtered.length;
+  const visible = filtered;
+
+  const adminSections = useMemo(() => {
+    if (categoryFilter !== "all" || search.trim()) return null;
+    return groupGalleryDesignsByCategory(filtered, categories);
+  }, [categoryFilter, search, filtered, categories]);
+
+  const renderAdminCard = (design: GalleryDesign, height: number, dragging: boolean) => (
+    <GalleryDesignCard
+      design={design}
+      height={height}
+      active={selectedId === design.id}
+      busy={pendingIds.has(design.id) || dragging}
+      editMode={editGrid}
+      onSelect={() => selectDesign(design)}
+      onEdit={() => selectDesign(design)}
+      onReplace={() => {
+        replaceDesignId.current = design.id;
+        replaceRef.current?.click();
+      }}
+      onDuplicate={() => duplicateDesign(design.id)}
+      onDelete={() => deleteDesign(design.id)}
+      onToggleFeatured={() =>
+        void patchDesign(design.id, {
+          metadata: { ...design.metadata, featured: !design.metadata?.featured },
+        })
+      }
+    />
+  );
 
   const selectDesign = (design: GalleryDesign) => {
     setSelectedId(design.id);
@@ -298,6 +326,20 @@ export default function GalleryManagerApp({
     }
   };
 
+  const saveSectionReorder = (sectionDesigns: GalleryDesign[], ordered: GalleryDesign[]) => {
+    const sectionIdSet = new Set(sectionDesigns.map((d) => d.id));
+    const sectionInDesigns = designs.filter((d) => sectionIdSet.has(d.id));
+    if (!sectionInDesigns.length) return;
+
+    const firstOrder = Math.min(...sectionInDesigns.map((d) => d.sort_order));
+    const others = designs
+      .filter((d) => !sectionIdSet.has(d.id))
+      .sort((a, b) => a.sort_order - b.sort_order);
+    const before = others.filter((d) => d.sort_order < firstOrder);
+    const after = others.filter((d) => d.sort_order >= firstOrder);
+    void saveReorder([...before, ...ordered, ...after]);
+  };
+
   const replaceImage = async (designId: string, file: File) => {
     markPending([designId], true);
     try {
@@ -348,7 +390,6 @@ export default function GalleryManagerApp({
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
-                  setVisibleCount(PAGE_SIZE);
                 }}
                 placeholder="Search designs…"
                 className="be-topnav__search-input"
@@ -362,21 +403,19 @@ export default function GalleryManagerApp({
               <Search size={18} />
             </button>
           )}
-          <select
-            value={gridLayout}
-            onChange={(e) => onGridLayoutChange(e.target.value as GridSize)}
-            className="be-topnav__select"
-            aria-label="Grid layout"
+          <button
+            type="button"
+            className={`be-btn be-btn--ghost${editGrid ? " be-btn--toggle-active" : ""}`}
+            onClick={() => setEditGrid((v) => !v)}
+            aria-pressed={editGrid}
           >
-            <option value="small">Grid · Small</option>
-            <option value="medium">Grid · Medium</option>
-            <option value="large">Grid · Large</option>
-          </select>
+            <LayoutGrid size={15} />
+            {editGrid ? "Done editing" : "Edit Grid"}
+          </button>
           <select
             value={categoryFilter}
             onChange={(e) => {
               setCategoryFilter(e.target.value);
-              setVisibleCount(PAGE_SIZE);
             }}
             className="be-topnav__select"
             aria-label="Category filter"
@@ -415,12 +454,13 @@ export default function GalleryManagerApp({
 
       <div className="be-workspace">
         <main className="be-canvas">
-          <div className="be-zoom">
+          <div className={`be-zoom${editGrid ? " be-zoom--active" : ""}`}>
             <button
               type="button"
               onClick={() => setZoom((z) => Math.max(0, z - 10))}
               className="be-zoom__btn"
               aria-label="Zoom out"
+              disabled={!editGrid}
             >
               <Minus size={16} />
             </button>
@@ -431,19 +471,34 @@ export default function GalleryManagerApp({
               value={zoom}
               onChange={(e) => setZoom(Number(e.target.value))}
               className="be-zoom__slider"
-              aria-label="Zoom"
+              aria-label="Row size"
+              disabled={!editGrid}
             />
             <button
               type="button"
               onClick={() => setZoom((z) => Math.min(100, z + 10))}
               className="be-zoom__btn"
               aria-label="Zoom in"
+              disabled={!editGrid}
             >
               <Plus size={16} />
             </button>
-            <span className="be-zoom__label">
-              {gridLayout.charAt(0).toUpperCase() + gridLayout.slice(1)}
-            </span>
+            <select
+              value={gridLayout}
+              onChange={(e) => onGridLayoutChange(e.target.value as GridSize)}
+              className="be-zoom__preset"
+              aria-label="Grid preset"
+              disabled={!editGrid}
+            >
+              <option value="small">Compact</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+            </select>
+            {editGrid ? (
+              <span className="be-zoom__hint">Drag designs to reorder · adjust row size</span>
+            ) : (
+              <span className="be-zoom__label">Behance layout</span>
+            )}
           </div>
 
           {showUpload && (
@@ -516,34 +571,36 @@ export default function GalleryManagerApp({
 
           <div className="be-scroll">
             {visible.length > 0 ? (
-              <GalleryMasonryGrid
-                items={visible}
-                columnWidth={columnWidth}
-                disabled={sort !== "order"}
-                onReorder={saveReorder}
-                onLoadMore={() => setVisibleCount((n) => n + PAGE_SIZE)}
-                hasMore={hasMore}
-                renderCard={(design, { dragging }) => (
-                  <GalleryDesignCard
-                    design={design}
-                    active={selectedId === design.id}
-                    busy={pendingIds.has(design.id) || dragging}
-                    onSelect={() => selectDesign(design)}
-                    onEdit={() => selectDesign(design)}
-                    onReplace={() => {
-                      replaceDesignId.current = design.id;
-                      replaceRef.current?.click();
-                    }}
-                    onDuplicate={() => duplicateDesign(design.id)}
-                    onDelete={() => deleteDesign(design.id)}
-                    onToggleFeatured={() =>
-                      void patchDesign(design.id, {
-                        metadata: { ...design.metadata, featured: !design.metadata?.featured },
-                      })
-                    }
-                  />
-                )}
-              />
+              adminSections ? (
+                <div className="be-sections">
+                  {adminSections.map((section) => (
+                    <section key={section.id} className="be-section">
+                      <h2 className="be-section__title">{section.title}</h2>
+                      <DesignGalleryJustifiedGrid
+                        items={section.designs}
+                        className="bh-rows"
+                        packOptions={packOptions}
+                        dragDisabled={!editGrid || sort !== "order"}
+                        onReorder={(ordered) => saveSectionReorder(section.designs, ordered)}
+                        renderCard={(design, { height, dragging }) =>
+                          renderAdminCard(design, height, dragging)
+                        }
+                      />
+                    </section>
+                  ))}
+                </div>
+              ) : (
+                <DesignGalleryJustifiedGrid
+                  items={visible}
+                  className="bh-rows"
+                  packOptions={packOptions}
+                  dragDisabled={!editGrid || sort !== "order"}
+                  onReorder={saveReorder}
+                  renderCard={(design, { height, dragging }) =>
+                    renderAdminCard(design, height, dragging)
+                  }
+                />
+              )
             ) : (
               <div className="be-empty">
                 <p>No designs yet.</p>

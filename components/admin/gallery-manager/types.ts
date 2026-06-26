@@ -25,10 +25,19 @@ export function zoomToColumnWidth(zoom: number) {
   return Math.round(ZOOM_MIN + t * (ZOOM_MAX - ZOOM_MIN));
 }
 
+export function zoomToRowHeights(zoom: number) {
+  const t = Math.min(100, Math.max(0, zoom)) / 100;
+  return {
+    minHeight: Math.round(70 + t * 100),
+    maxHeight: Math.round(180 + t * 420),
+    gap: 4,
+  };
+}
+
 export function gridSizeToZoom(size: GridSize) {
-  if (size === "small") return 20;
-  if (size === "large") return 80;
-  return 50;
+  if (size === "small") return 25;
+  if (size === "large") return 85;
+  return 55;
 }
 
 export const PAGE_SIZE = 48;
