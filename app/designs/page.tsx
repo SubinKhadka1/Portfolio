@@ -12,19 +12,12 @@ export const metadata = {
 };
 
 export default async function DesignsPage() {
-  const { designs, categories, settings, totalDesigns } = await getDesignGalleryPageData();
+  const { designs, categories } = await getDesignGalleryPageData();
 
   return (
     <main className="designs-page min-h-screen bg-white text-[#191919]">
       <Navbar variant="light" />
-      <DesignGallery
-        eyebrow={settings.designGalleryEyebrow}
-        title={settings.designGalleryTitle}
-        subtitle={settings.designGallerySubtitle}
-        designs={designs}
-        categories={categories}
-        totalDesigns={totalDesigns}
-      />
+      <DesignGallery designs={designs} categories={categories} />
       <Footer variant="light" />
     </main>
   );

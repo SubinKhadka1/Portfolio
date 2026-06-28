@@ -25,8 +25,9 @@ body {
 
 html.page-designs,
 body.page-designs {
-  background: #ffffff;
-  color: #191919;
+  background: #ffffff !important;
+  color: #191919 !important;
+  color-scheme: light;
 }
 
 body.page-designs ::-webkit-scrollbar-track {
@@ -1602,14 +1603,16 @@ body.page-designs ::-webkit-scrollbar-thumb {
 }
 
 /* ── Public gallery — Behance project view ── */
-.designs-page {
-  background: #ffffff;
+.designs-page,
+.designs-page-root {
+  background: #ffffff !important;
+  color: #191919 !important;
 }
 
 .gallery-page {
   padding-top: 4.75rem;
-  background: #ffffff;
-  color: #191919;
+  background: #ffffff !important;
+  color: #191919 !important;
   min-height: calc(100dvh - 4.75rem);
 }
 
@@ -2621,8 +2624,8 @@ body.page-designs ::-webkit-scrollbar-thumb {
 .gallery-body {
   max-width: 88rem;
   margin: 0 auto;
-  padding: 2.5rem clamp(1rem, 3vw, 2rem) 5rem;
-  background: #ffffff;
+  padding: 3rem clamp(1rem, 3vw, 2rem) 5rem;
+  background: #ffffff !important;
 }
 
 .gallery-section + .gallery-section {
