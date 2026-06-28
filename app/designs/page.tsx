@@ -15,7 +15,7 @@ export default async function DesignsPage() {
   const { designs, categories, settings, totalDesigns } = await getDesignGalleryPageData();
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="designs-page min-h-screen bg-white text-[#191919]">
       <Navbar variant="light" />
       <DesignGallery
         eyebrow={settings.designGalleryEyebrow}

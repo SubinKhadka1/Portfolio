@@ -1,9 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { ArrowLeft, Search, Star } from "lucide-react";
-import Link from "next/link";
+import { Search, Star } from "lucide-react";
 import type { Category, DesignItem } from "@/lib/types/database";
 import { groupDesignsByCategory } from "@/lib/design-gallery";
 import DesignGalleryJustifiedGrid from "@/components/DesignGalleryJustifiedGrid";
@@ -44,7 +42,7 @@ function GalleryCard({
     <button
       type="button"
       onClick={onOpen}
-      className="gallery-card gallery-card--justified group"
+      className="gallery-card gallery-card--justified"
       style={{ height }}
       aria-label={`View ${design.title}`}
     >
@@ -58,11 +56,6 @@ function GalleryCard({
         height={design.imageHeight}
         draggable={false}
       />
-      <div className="gallery-card__overlay">
-        <span className="gallery-card__save">
-          View
-        </span>
-      </div>
       {design.featured ? (
         <span className="gallery-card__featured" aria-label="Featured">
           <Star size={12} fill="currentColor" />
@@ -98,12 +91,8 @@ function JustifiedSection({
 }
 
 export default function DesignGallery({
-  eyebrow,
-  title,
-  subtitle,
   designs,
   categories,
-  totalDesigns,
 }: {
   eyebrow: string;
   title: string;
@@ -113,6 +102,7 @@ export default function DesignGallery({
   totalDesigns: number;
 }) {
   const [search, setSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sort, setSort] = useState<SortMode>("order");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -159,68 +149,74 @@ export default function DesignGallery({
 
   return (
     <div className="gallery-page">
-      <header className="gallery-hero">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="gallery-hero__inner"
-        >
-          <Link href="/" className="gallery-hero__back">
-            <ArrowLeft size={16} />
-            Back to home
-          </Link>
-          <p className="gallery-hero__eyebrow">{eyebrow}</p>
-          <h1 className="gallery-hero__title">{title}</h1>
-          <p className="gallery-hero__subtitle">{subtitle}</p>
-          <p className="gallery-hero__count">
-            {totalDesigns} design{totalDesigns === 1 ? "" : "s"}
-          </p>
-        </motion.div>
-      </header>
-
-      <div className="gallery-controls">
-        <div className="gallery-controls__search">
-          <Search size={16} className="gallery-controls__search-icon" />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search designs…"
-            className="gallery-controls__input"
-            aria-label="Search designs"
-          />
+      <div className="gallery-toolbar">
+        <div className="gallery-toolbar__inner">
+          {searchOpen ? (
+            <div className="gallery-toolbar__search">
+              <Search size={15} className="gallery-toolbar__search-icon" />
+              <input
+                type="search"
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search designs…"
+                className="gallery-toolbar__input"
+                aria-label="Search designs"
+              />
+              <button
+                type="button"
+                className="gallery-toolbar__close"
+                onClick={() => {
+                  setSearchOpen(false);
+                  setSearch("");
+                }}
+              >
+                Close
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="gallery-toolbar__icon"
+                onClick={() => setSearchOpen(true)}
+                aria-label="Search designs"
+              >
+                <Search size={16} />
+              </button>
+              <div className="gallery-toolbar__filters">
+                <button
+                  type="button"
+                  onClick={() => setCategoryFilter("all")}
+                  className={`gallery-toolbar__link${categoryFilter === "all" ? " gallery-toolbar__link--active" : ""}`}
+                >
+                  All
+                </button>
+                {filterChips.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setCategoryFilter(cat.id)}
+                    className={`gallery-toolbar__link${categoryFilter === cat.id ? " gallery-toolbar__link--active" : ""}`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortMode)}
+                className="gallery-toolbar__sort"
+                aria-label="Sort designs"
+              >
+                <option value="order">Order</option>
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="featured">Featured</option>
+              </select>
+            </>
+          )}
         </div>
-        <div className="gallery-controls__filters">
-          <button
-            type="button"
-            onClick={() => setCategoryFilter("all")}
-            className={`gallery-controls__chip${categoryFilter === "all" ? " gallery-controls__chip--active" : ""}`}
-          >
-            All ({designs.length})
-          </button>
-          {filterChips.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setCategoryFilter(cat.id)}
-              className={`gallery-controls__chip${categoryFilter === cat.id ? " gallery-controls__chip--active" : ""}`}
-            >
-              {cat.name} ({categoryCounts.get(cat.id) || 0})
-            </button>
-          ))}
-        </div>
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as SortMode)}
-          className="gallery-controls__sort"
-          aria-label="Sort designs"
-        >
-          <option value="order">Display order</option>
-          <option value="newest">Newest</option>
-          <option value="oldest">Oldest</option>
-          <option value="featured">Featured</option>
-        </select>
       </div>
 
       <div className="gallery-body">
@@ -242,7 +238,15 @@ export default function DesignGallery({
             />
           ))
         ) : (
-          <JustifiedSection designs={filtered} onOpen={setActiveId} />
+          <JustifiedSection
+            title={
+              categoryFilter !== "all"
+                ? categories.find((c) => c.id === categoryFilter)?.name
+                : undefined
+            }
+            designs={filtered}
+            onOpen={setActiveId}
+          />
         )}
       </div>
 

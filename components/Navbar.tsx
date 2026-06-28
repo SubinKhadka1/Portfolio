@@ -49,9 +49,11 @@ export default function Navbar({ variant }: { variant?: "light" | "dark" }) {
       transition={{ duration: 0.8 }}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         light
-          ? scrolled
-            ? "bg-white/92 backdrop-blur-md border-b border-zinc-200 shadow-sm"
-            : "bg-white/80 backdrop-blur-sm border-b border-zinc-100"
+          ? pathname === "/designs"
+            ? "bg-white border-b border-[#ebebeb]"
+            : scrolled
+              ? "bg-white/92 backdrop-blur-md border-b border-zinc-200 shadow-sm"
+              : "bg-white/80 backdrop-blur-sm border-b border-zinc-100"
           : scrolled
             ? "bg-[#050505]/90 backdrop-blur-md border-b border-white/10"
             : "bg-transparent"
