@@ -624,5 +624,928 @@
       "updated_at": "2026-06-20T06:08:05.449Z",
       "categories": null
     }
-  ]
+  ],
+  "gallery_designs": [
+    {
+      "id": "b594f1e8-d894-44cc-ae46-39eddedba936",
+      "title": "+ 2 Graduates",
+      "description": "",
+      "media_url": "/designs/_2 Graduates - Final.jpg",
+      "category_id": "cat-flyers",
+      "sort_order": 1000,
+      "published": true,
+      "metadata": {
+        "color": "from-blue-700 to-cyan-900",
+        "aspectRatio": "portrait",
+        "galleryHidden": false,
+        "imageWidth": 3240,
+        "imageHeight": 4050
+      },
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "a866e582-fb05-4f64-91f9-24da1c262334",
+      "title": "FESTIVALS SEASON",
+      "description": "",
+      "media_url": "/designs/FESTIVALS SEASON.jpg",
+      "category_id": "cat-flyers",
+      "sort_order": 2000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "portrait",
+        "imageWidth": 3240,
+        "imageHeight": 4050,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:14:59.979Z",
+      "updated_at": "2026-06-29T16:14:59.979Z"
+    },
+    {
+      "id": "feb3e61d-c5e2-48b2-afe9-13f16c3696e9",
+      "title": "FREE IELTS",
+      "description": "",
+      "media_url": "/designs/FREE IELTS.jpg",
+      "category_id": "cat-flyers",
+      "sort_order": 3000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "portrait",
+        "imageWidth": 3240,
+        "imageHeight": 4050,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:15:00.113Z",
+      "updated_at": "2026-06-29T16:15:00.113Z"
+    },
+    {
+      "id": "5af4653b-44c8-450d-8349-6346e12d1cd0",
+      "title": "LEARN A TRADE",
+      "description": "",
+      "media_url": "/designs/LEARN A TRADE.jpg",
+      "category_id": "cat-flyers",
+      "sort_order": 4000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "portrait",
+        "imageWidth": 3240,
+        "imageHeight": 4050,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:15:00.315Z",
+      "updated_at": "2026-06-29T16:15:00.315Z"
+    },
+    {
+      "id": "35d21915-99b0-4ad6-9661-beb9e4cdd4b9",
+      "title": "New Year 2083",
+      "description": "",
+      "media_url": "/designs/NEW YEAR - 2083.jpg",
+      "category_id": "cat-flyers",
+      "sort_order": 5000,
+      "published": true,
+      "metadata": {
+        "color": "from-yellow-700 to-orange-900",
+        "aspectRatio": "portrait",
+        "galleryHidden": false,
+        "imageWidth": 3240,
+        "imageHeight": 4050
+      },
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-20T05:46:52.549Z"
+    },
+    {
+      "id": "21e3a5c4-f29a-47a6-bc9f-fbf215fb9e70",
+      "title": "New Year",
+      "description": "",
+      "media_url": "/designs/New Year.jpg",
+      "category_id": "cat-flyers",
+      "sort_order": 6000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "portrait",
+        "imageWidth": 3240,
+        "imageHeight": 4050,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:15:00.782Z",
+      "updated_at": "2026-06-29T16:15:00.782Z"
+    },
+    {
+      "id": "6477ed3a-9c4a-4435-a26c-53506ebc43b6",
+      "title": "Opportunity",
+      "description": "",
+      "media_url": "/designs/Opportunity.jpg",
+      "category_id": "cat-flyers",
+      "sort_order": 7000,
+      "published": true,
+      "metadata": {
+        "color": "from-yellow-700 to-orange-900",
+        "aspectRatio": "portrait",
+        "galleryHidden": false,
+        "imageWidth": 3240,
+        "imageHeight": 4050
+      },
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "bb1fac60-6c79-41fe-ae5c-bc7ffa993767",
+      "title": "WHY",
+      "description": "",
+      "media_url": "/designs/WHY.jpg",
+      "category_id": "cat-flyers",
+      "sort_order": 8000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "portrait",
+        "imageWidth": 3240,
+        "imageHeight": 4050,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:15:01.450Z",
+      "updated_at": "2026-06-29T16:15:01.450Z"
+    },
+    {
+      "id": "9f0116d1-4390-4054-b6ef-647f50058d10",
+      "title": "Wolverhampton",
+      "description": "",
+      "media_url": "/designs/Wolverhampton.jpg",
+      "category_id": "cat-flyers",
+      "sort_order": 9000,
+      "published": true,
+      "metadata": {
+        "color": "from-blue-700 to-cyan-900",
+        "aspectRatio": "portrait",
+        "galleryHidden": false,
+        "imageWidth": 3240,
+        "imageHeight": 4050
+      },
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-20T05:46:52.549Z"
+    },
+    {
+      "id": "1f1ad96a-ae79-4ed9-a5d9-2eac9d2d9be4",
+      "title": "Your Pathway to Australia",
+      "description": "",
+      "media_url": "/designs/Your Pathway to Australia.jpg",
+      "category_id": "cat-flyers",
+      "sort_order": 10000,
+      "published": true,
+      "metadata": {
+        "color": "from-emerald-700 to-teal-900",
+        "aspectRatio": "portrait",
+        "galleryHidden": false,
+        "imageWidth": 3240,
+        "imageHeight": 4050
+      },
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-20T05:46:52.549Z"
+    },
+    {
+      "id": "f87e24d0-7713-4184-9a58-0a259f966ea5",
+      "title": "Burger1",
+      "description": "",
+      "media_url": "/designs/Burger1.jpg",
+      "category_id": "cat-food-menu",
+      "sort_order": 1000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:14:59.578Z",
+      "updated_at": "2026-06-29T16:14:59.578Z"
+    },
+    {
+      "id": "6544d0c4-1ea9-490b-8962-1fbc101ce9b8",
+      "title": "burgerFLYER",
+      "description": "",
+      "media_url": "/designs/1781940841563-burgerFLYER.jpg",
+      "category_id": "cat-pullup",
+      "sort_order": 1000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "portrait",
+        "imageWidth": 955,
+        "imageHeight": 1350,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:14:59.310Z",
+      "updated_at": "2026-06-29T16:14:59.310Z"
+    },
+    {
+      "id": "fd07437e-df86-4b20-96b9-d7d600013c94",
+      "title": "1burgerFLYER",
+      "description": "",
+      "media_url": "/designs/1781941005341-1burgerFLYER.jpg",
+      "category_id": "cat-pullup",
+      "sort_order": 2000,
+      "published": true,
+      "metadata": {
+        "color": "from-violet-700 to-indigo-900",
+        "aspectRatio": "portrait",
+        "galleryHidden": false,
+        "imageWidth": 955,
+        "imageHeight": 1350
+      },
+      "created_at": "2026-06-20T07:36:53.665Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "3c20d0ce-afc9-4f1a-8187-a07e969c6545",
+      "title": "BUY 1",
+      "description": "",
+      "media_url": "/designs/1781940599039-BUY-1.jpg",
+      "category_id": "cat-social",
+      "sort_order": 1000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:14:59.236Z",
+      "updated_at": "2026-06-29T16:14:59.236Z"
+    },
+    {
+      "id": "dafa2b6b-2033-4e5b-b472-84a4c46a3c43",
+      "title": "TIRA MISS YOU",
+      "description": "",
+      "media_url": "/designs/1781941235880-TIRA---MISS---YOU.jpg",
+      "category_id": "cat-social",
+      "sort_order": 2000,
+      "published": true,
+      "metadata": {
+        "color": "from-violet-700 to-indigo-900",
+        "aspectRatio": "square",
+        "galleryHidden": false,
+        "imageWidth": 1080,
+        "imageHeight": 1080
+      },
+      "created_at": "2026-06-20T07:40:41.769Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "1c2b2762-43ab-4627-a343-c8979c7356dd",
+      "title": "6 STEPS",
+      "description": "",
+      "media_url": "/designs/6 STEPS.jpg",
+      "category_id": "cat-social",
+      "sort_order": 3000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:14:59.511Z",
+      "updated_at": "2026-06-29T16:14:59.511Z"
+    },
+    {
+      "id": "0e5c8ebc-edcf-49c6-b7c6-e2e0a2097440",
+      "title": "Children's Day",
+      "description": "",
+      "media_url": "/designs/Children's Day.jpg",
+      "category_id": "cat-social",
+      "sort_order": 4000,
+      "published": true,
+      "metadata": {
+        "color": "from-pink-700 to-rose-900",
+        "aspectRatio": "square",
+        "galleryHidden": false,
+        "imageWidth": 3240,
+        "imageHeight": 3240
+      },
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-20T05:46:52.549Z"
+    },
+    {
+      "id": "9f42ef70-fdb8-470f-812f-c30132c21d91",
+      "title": "CHRISTMAS",
+      "description": "",
+      "media_url": "/designs/CHRISTMAS.jpg",
+      "category_id": "cat-social",
+      "sort_order": 5000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:14:59.645Z",
+      "updated_at": "2026-06-29T16:14:59.645Z"
+    },
+    {
+      "id": "7e17b160-5d24-42af-a821-f67153a3c726",
+      "title": "Constitution Day",
+      "description": "",
+      "media_url": "/designs/ConstitutionDay.jpg",
+      "category_id": "cat-social",
+      "sort_order": 6000,
+      "published": true,
+      "metadata": {
+        "color": "from-blue-700 to-indigo-900",
+        "aspectRatio": "square",
+        "galleryHidden": false,
+        "imageWidth": 3240,
+        "imageHeight": 3240
+      },
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "a60a8334-9422-4105-85df-ea61163792f5",
+      "title": "Cyprus",
+      "description": "",
+      "media_url": "/designs/CYPRUS.jpg",
+      "category_id": "cat-social",
+      "sort_order": 7000,
+      "published": true,
+      "metadata": {
+        "color": "from-violet-700 to-indigo-900",
+        "aspectRatio": "square",
+        "galleryHidden": false,
+        "imageWidth": 3240,
+        "imageHeight": 3240
+      },
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "be6d01f2-028a-410b-a6d9-46aa33149450",
+      "title": "EDUCATION JOURNEY",
+      "description": "",
+      "media_url": "/designs/EDUCATION JOURNEY.jpg",
+      "category_id": "cat-social",
+      "sort_order": 8000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:14:59.912Z",
+      "updated_at": "2026-06-29T16:14:59.912Z"
+    },
+    {
+      "id": "a9d2b6d2-c3fd-47c0-8bfb-2b02a4d03a7c",
+      "title": "Free Desert",
+      "description": "",
+      "media_url": "/designs/FREE DESERT.jpg",
+      "category_id": "cat-social",
+      "sort_order": 9000,
+      "published": true,
+      "metadata": {
+        "color": "from-violet-700 to-indigo-900",
+        "aspectRatio": "square",
+        "galleryHidden": false,
+        "imageWidth": 3240,
+        "imageHeight": 3240
+      },
+      "created_at": "2026-06-20T07:12:51.649Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "78291e32-3c92-4633-b1cf-a5e2697f30a1",
+      "title": "HOME LOAN",
+      "description": "",
+      "media_url": "/designs/HOME LOAN.jpg",
+      "category_id": "cat-social",
+      "sort_order": 10000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:15:00.181Z",
+      "updated_at": "2026-06-29T16:15:00.181Z"
+    },
+    {
+      "id": "0bc51e8d-6c79-4666-97f3-8798a9e75e43",
+      "title": "Huddersfield",
+      "description": "",
+      "media_url": "/designs/HUDDERSFIELD final.jpg",
+      "category_id": "cat-social",
+      "sort_order": 11000,
+      "published": true,
+      "metadata": {
+        "color": "from-slate-700 to-gray-900",
+        "aspectRatio": "square",
+        "galleryHidden": false,
+        "imageWidth": 3240,
+        "imageHeight": 3240
+      },
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "b3349f6c-e4e5-4378-b3fb-f636fbd3e60b",
+      "title": "Live Study",
+      "description": "",
+      "media_url": "/designs/LIVE STUDY.jpg",
+      "category_id": "cat-social",
+      "sort_order": 12000,
+      "published": true,
+      "metadata": {
+        "color": "from-green-700 to-emerald-900",
+        "aspectRatio": "square",
+        "galleryHidden": false,
+        "imageWidth": 3240,
+        "imageHeight": 3240
+      },
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "0b83bbfb-574b-419b-a3c8-f48977292699",
+      "title": "LOAN FEATURES",
+      "description": "",
+      "media_url": "/designs/LOAN FEATURES.jpg",
+      "category_id": "cat-social",
+      "sort_order": 13000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:15:00.449Z",
+      "updated_at": "2026-06-29T16:15:00.449Z"
+    },
+    {
+      "id": "ffe4ac0b-d38d-4fdd-8946-44d230c054e1",
+      "title": "MARCH INTAKE",
+      "description": "",
+      "media_url": "/designs/MARCH INTAKE.jpg",
+      "category_id": "cat-social",
+      "sort_order": 14000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:15:00.515Z",
+      "updated_at": "2026-06-29T16:15:00.515Z"
+    },
+    {
+      "id": "d59a89d8-c792-45d9-8cc6-2a009d73970e",
+      "title": "MASTER OF NURSING",
+      "description": "",
+      "media_url": "/designs/MASTER OF NURSING.jpg",
+      "category_id": "cat-social",
+      "sort_order": 15000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:15:00.582Z",
+      "updated_at": "2026-06-29T16:15:00.582Z"
+    },
+    {
+      "id": "f8a0cc27-047a-4c51-a23c-03557a4eee99",
+      "title": "MYTH FACT",
+      "description": "",
+      "media_url": "/designs/MYTH _ FACT.jpg",
+      "category_id": "cat-social",
+      "sort_order": 16000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:15:00.649Z",
+      "updated_at": "2026-06-29T16:15:00.649Z"
+    },
+    {
+      "id": "88e6d8b7-353d-4a85-9f02-358822011abd",
+      "title": "One Roof",
+      "description": "",
+      "media_url": "/designs/ONE-ROOF.jpg",
+      "category_id": "cat-social",
+      "sort_order": 17000,
+      "published": true,
+      "metadata": {
+        "color": "from-sky-700 to-blue-900",
+        "aspectRatio": "square",
+        "galleryHidden": false,
+        "imageWidth": 3240,
+        "imageHeight": 3240
+      },
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "51d424c4-1ece-4f21-8b82-b8542c84d2ea",
+      "title": "PTE Score",
+      "description": "",
+      "media_url": "/designs/PTE SCORE.jpg",
+      "category_id": "cat-social",
+      "sort_order": 18000,
+      "published": true,
+      "metadata": {
+        "color": "from-purple-700 to-fuchsia-900",
+        "aspectRatio": "square",
+        "galleryHidden": false,
+        "imageWidth": 3240,
+        "imageHeight": 3240
+      },
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "1ebb47cf-8266-4a9e-88d5-54790428c4ef",
+      "title": "Republic Day",
+      "description": "",
+      "media_url": "/designs/REPUBLIC-DAY.jpg",
+      "category_id": "cat-social",
+      "sort_order": 19000,
+      "published": true,
+      "metadata": {
+        "color": "from-red-700 to-yellow-900",
+        "aspectRatio": "square",
+        "galleryHidden": false,
+        "imageWidth": 1080,
+        "imageHeight": 1080
+      },
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-20T05:46:52.549Z"
+    },
+    {
+      "id": "fb3cd2be-54b2-49a5-8c02-eb319d07c755",
+      "title": "SCHOLARSHIP",
+      "description": "",
+      "media_url": "/designs/SCHOLARSHIP.jpg",
+      "category_id": "cat-social",
+      "sort_order": 20000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:15:01.116Z",
+      "updated_at": "2026-06-29T16:15:01.116Z"
+    },
+    {
+      "id": "d008177c-5bbe-4630-b58b-989e947fd63c",
+      "title": "SKILLED CHEF",
+      "description": "",
+      "media_url": "/designs/SKILLED CHEF.jpg",
+      "category_id": "cat-social",
+      "sort_order": 21000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:15:01.182Z",
+      "updated_at": "2026-06-29T16:15:01.182Z"
+    },
+    {
+      "id": "03de026f-eb53-4dd7-a092-368ed672c2eb",
+      "title": "TIRA MISS YOU",
+      "description": "",
+      "media_url": "/designs/TIRA - MISS - YOU.jpg",
+      "category_id": "cat-social",
+      "sort_order": 22000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:15:01.249Z",
+      "updated_at": "2026-06-29T16:15:01.249Z"
+    },
+    {
+      "id": "e4174165-c052-411d-ae98-d6e499c97035",
+      "title": "WE ARE HIRING final",
+      "description": "",
+      "media_url": "/designs/WE ARE HIRING final.jpg",
+      "category_id": "cat-social",
+      "sort_order": 23000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:15:01.316Z",
+      "updated_at": "2026-06-29T16:15:01.316Z"
+    },
+    {
+      "id": "b9531cc3-ca6e-4776-855e-7123ae8b4686",
+      "title": "WE ARE HIRING",
+      "description": "",
+      "media_url": "/designs/WE ARE HIRING.jpg",
+      "category_id": "cat-social",
+      "sort_order": 24000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:15:01.384Z",
+      "updated_at": "2026-06-29T16:15:01.384Z"
+    },
+    {
+      "id": "ebbbb984-a524-400d-a17b-fb942c8cfa7b",
+      "title": "What's Next",
+      "description": "",
+      "media_url": "/designs/What's Next_.jpg",
+      "category_id": "cat-social",
+      "sort_order": 25000,
+      "published": true,
+      "metadata": {
+        "aspectRatio": "square",
+        "imageWidth": 3240,
+        "imageHeight": 3240,
+        "galleryHidden": false
+      },
+      "created_at": "2026-06-29T16:15:01.517Z",
+      "updated_at": "2026-06-29T16:15:01.517Z"
+    }
+  ],
+  "homepage_designs": [
+    {
+      "id": "b5b53b2f-f039-488c-a935-0a3654827ea0",
+      "title": "Cyprus",
+      "description": "",
+      "media_url": "/designs/CYPRUS.jpg",
+      "sort_order": 1000,
+      "published": true,
+      "metadata": {
+        "color": "from-violet-700 to-indigo-900",
+        "aspectRatio": "square",
+        "marqueeRow": 1
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "1c87807b-a561-427e-9a65-739c2942ce20",
+      "title": "Opportunity",
+      "description": "",
+      "media_url": "/designs/Opportunity.jpg",
+      "sort_order": 1001,
+      "published": true,
+      "metadata": {
+        "color": "from-yellow-700 to-orange-900",
+        "aspectRatio": "portrait",
+        "marqueeRow": 1
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "4301574d-c3ab-4e56-86f5-c2dc42d5b667",
+      "title": "Live Study",
+      "description": "",
+      "media_url": "/designs/LIVE STUDY.jpg",
+      "sort_order": 1002,
+      "published": true,
+      "metadata": {
+        "color": "from-green-700 to-emerald-900",
+        "aspectRatio": "square",
+        "marqueeRow": 1
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "231a8d5e-8869-4e6f-afb8-c2c14b63e36b",
+      "title": "PTE Score",
+      "description": "",
+      "media_url": "/designs/PTE SCORE.jpg",
+      "sort_order": 1003,
+      "published": true,
+      "metadata": {
+        "color": "from-purple-700 to-fuchsia-900",
+        "aspectRatio": "square",
+        "marqueeRow": 1
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "6c476cc8-39d3-4ea3-8712-d3c1f140066f",
+      "title": "Constitution Day",
+      "description": "",
+      "media_url": "/designs/ConstitutionDay.jpg",
+      "sort_order": 1004,
+      "published": true,
+      "metadata": {
+        "color": "from-blue-700 to-indigo-900",
+        "aspectRatio": "square",
+        "marqueeRow": 1
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "067e15de-22c1-4453-b507-4b772ed01691",
+      "title": "TIRA MISS YOU",
+      "description": "",
+      "media_url": "/designs/1781941235880-TIRA---MISS---YOU.jpg",
+      "sort_order": 1005,
+      "published": true,
+      "metadata": {
+        "color": "from-violet-700 to-indigo-900",
+        "aspectRatio": "square",
+        "marqueeRow": 1
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T07:40:41.769Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "a91eccdf-9302-4159-953c-d3506c28cec1",
+      "title": "New Year 2083",
+      "description": "",
+      "media_url": "/designs/NEW YEAR - 2083.jpg",
+      "sort_order": 2000,
+      "published": true,
+      "metadata": {
+        "color": "from-yellow-700 to-orange-900",
+        "aspectRatio": "portrait",
+        "marqueeRow": 2
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-20T05:46:52.549Z"
+    },
+    {
+      "id": "af96c3ad-c5ef-4388-9879-212257bf4a6d",
+      "title": "Children's Day",
+      "description": "",
+      "media_url": "/designs/Children's Day.jpg",
+      "sort_order": 2001,
+      "published": true,
+      "metadata": {
+        "color": "from-pink-700 to-rose-900",
+        "aspectRatio": "square",
+        "marqueeRow": 2
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-20T05:46:52.549Z"
+    },
+    {
+      "id": "44ddadd1-87c8-4fc0-956c-4b6d6af35fec",
+      "title": "Republic Day",
+      "description": "",
+      "media_url": "/designs/REPUBLIC-DAY.jpg",
+      "sort_order": 2002,
+      "published": true,
+      "metadata": {
+        "color": "from-red-700 to-yellow-900",
+        "aspectRatio": "square",
+        "marqueeRow": 2
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-20T05:46:52.549Z"
+    },
+    {
+      "id": "af08dd94-40c7-47d9-ad29-be10f8a07f33",
+      "title": "Your Pathway to Australia",
+      "description": "",
+      "media_url": "/designs/Your Pathway to Australia.jpg",
+      "sort_order": 2003,
+      "published": true,
+      "metadata": {
+        "color": "from-emerald-700 to-teal-900",
+        "aspectRatio": "portrait",
+        "marqueeRow": 2
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-20T05:46:52.549Z"
+    },
+    {
+      "id": "b021f7ee-be08-4903-9d51-73e74059222c",
+      "title": "Wolverhampton",
+      "description": "",
+      "media_url": "/designs/Wolverhampton.jpg",
+      "sort_order": 2004,
+      "published": true,
+      "metadata": {
+        "color": "from-blue-700 to-cyan-900",
+        "aspectRatio": "portrait",
+        "marqueeRow": 2
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-20T05:46:52.549Z"
+    },
+    {
+      "id": "9f66a8d0-0697-4415-95ad-a8ec32511d24",
+      "title": "Huddersfield",
+      "description": "",
+      "media_url": "/designs/HUDDERSFIELD final.jpg",
+      "sort_order": 3000,
+      "published": true,
+      "metadata": {
+        "color": "from-slate-700 to-gray-900",
+        "aspectRatio": "square",
+        "marqueeRow": 3
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "30f29d13-6128-4714-b30a-ffa6563c1a10",
+      "title": "One Roof",
+      "description": "",
+      "media_url": "/designs/ONE-ROOF.jpg",
+      "sort_order": 3001,
+      "published": true,
+      "metadata": {
+        "color": "from-sky-700 to-blue-900",
+        "aspectRatio": "square",
+        "marqueeRow": 3
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "84200ff6-1ba8-4f85-822a-a76019e071a3",
+      "title": "+ 2 Graduates",
+      "description": "",
+      "media_url": "/designs/_2 Graduates - Final.jpg",
+      "sort_order": 3002,
+      "published": true,
+      "metadata": {
+        "color": "from-blue-700 to-cyan-900",
+        "aspectRatio": "portrait",
+        "marqueeRow": 3
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T05:46:52.549Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "06ebf533-084b-4199-9260-fb516b30253b",
+      "title": "Free Desert",
+      "description": "",
+      "media_url": "/designs/FREE DESERT.jpg",
+      "sort_order": 3003,
+      "published": true,
+      "metadata": {
+        "color": "from-violet-700 to-indigo-900",
+        "aspectRatio": "square",
+        "marqueeRow": 3
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T07:12:51.649Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    },
+    {
+      "id": "627bd7c0-4ff8-407a-a5cf-e45ce36f95a1",
+      "title": "1burgerFLYER",
+      "description": "",
+      "media_url": "/designs/1781941005341-1burgerFLYER.jpg",
+      "sort_order": 3004,
+      "published": true,
+      "metadata": {
+        "color": "from-violet-700 to-indigo-900",
+        "aspectRatio": "portrait",
+        "marqueeRow": 3
+      },
+      "source_gallery_design_id": null,
+      "created_at": "2026-06-20T07:36:53.665Z",
+      "updated_at": "2026-06-22T09:11:30.813Z"
+    }
+  ],
+  "_design_modules_migrated": true
 }
