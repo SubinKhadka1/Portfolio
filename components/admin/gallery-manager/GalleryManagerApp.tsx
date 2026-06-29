@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   LayoutGrid,
+  ListOrdered,
   Loader2,
   Minus,
   Plus,
@@ -10,6 +11,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import GallerySectionsEditor from "@/components/admin/gallery-manager/GallerySectionsEditor";
 import GalleryDesignCard from "@/components/admin/gallery-manager/GalleryDesignCard";
 import GalleryPropertiesPanel from "@/components/admin/gallery-manager/GalleryPropertiesPanel";
 import DesignGalleryJustifiedGrid from "@/components/DesignGalleryJustifiedGrid";
@@ -43,7 +45,7 @@ export default function GalleryManagerApp({
   >;
 }) {
   const snapshotRef = useRef(JSON.stringify(initialDesigns));
-  const [categories] = useState(initialCategories);
+  const [categories, setCategories] = useState(initialCategories);
   const [designs, setDesigns] = useState(initialDesigns);
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -52,6 +54,7 @@ export default function GalleryManagerApp({
   const [gridLayout, setGridLayout] = useState<GridSize>("medium");
   const [zoom, setZoom] = useState(gridSizeToZoom("medium"));
   const [editGrid, setEditGrid] = useState(false);
+  const [editSections, setEditSections] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [panelDraft, setPanelDraft] = useState<GalleryDesign | null>(null);
   const [showUpload, setShowUpload] = useState(false);
@@ -405,6 +408,15 @@ export default function GalleryManagerApp({
           )}
           <button
             type="button"
+            className={`be-btn be-btn--ghost${editSections ? " be-btn--toggle-active" : ""}`}
+            onClick={() => setEditSections((v) => !v)}
+            aria-pressed={editSections}
+          >
+            <ListOrdered size={15} />
+            {editSections ? "Done" : "Sections"}
+          </button>
+          <button
+            type="button"
             className={`be-btn be-btn--ghost${editGrid ? " be-btn--toggle-active" : ""}`}
             onClick={() => setEditGrid((v) => !v)}
             aria-pressed={editGrid}
@@ -568,6 +580,14 @@ export default function GalleryManagerApp({
               </button>
             </div>
           )}
+
+          {editSections ? (
+            <GallerySectionsEditor
+              categories={categories}
+              onChange={setCategories}
+              onSaved={flash}
+            />
+          ) : null}
 
           <div className="be-scroll">
             {visible.length > 0 ? (

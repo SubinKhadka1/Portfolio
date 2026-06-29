@@ -3735,6 +3735,73 @@ body.page-designs ::-webkit-scrollbar-thumb {
   margin-bottom: 1.5rem;
 }
 
+.be-sections-editor {
+  margin: 0 1.25rem 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  background: #f8f9fb;
+  border: 1px solid #eef0f4;
+  flex-shrink: 0;
+}
+
+.be-sections-editor__hint {
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin-bottom: 0.75rem;
+  line-height: 1.45;
+}
+
+.be-sections-editor__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.be-sections-editor__row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #eef0f4;
+  cursor: grab;
+}
+
+.be-sections-editor__row--dragging {
+  opacity: 0.5;
+}
+
+.be-sections-editor__num {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #9ca3af;
+  width: 1rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.be-sections-editor__grip {
+  color: #c4c4c4;
+  flex-shrink: 0;
+}
+
+.be-sections-editor__input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #191919;
+}
+
+.be-sections-editor__input:focus {
+  border-bottom: 1px solid #0057ff;
+}
+
 .be-card--justified {
   height: 100%;
   border-radius: 0;
