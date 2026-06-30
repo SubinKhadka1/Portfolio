@@ -36,9 +36,11 @@ const ACCEPT = "image/jpeg,image/png,image/webp,image/jpg,.jpg,.jpeg,.png,.webp,
 export default function GalleryManagerApp({
   initialCategories,
   initialDesigns,
+  initialCategoryFilter = "all",
 }: {
   initialCategories: Category[];
   initialDesigns: GalleryDesign[];
+  initialCategoryFilter?: string;
   gallerySettings: Pick<
     SiteSettings,
     "designGalleryEyebrow" | "designGalleryTitle" | "designGallerySubtitle"
@@ -49,7 +51,7 @@ export default function GalleryManagerApp({
   const [designs, setDesigns] = useState(initialDesigns);
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState(initialCategoryFilter);
   const [sort] = useState<SortMode>("order");
   const [gridLayout, setGridLayout] = useState<GridSize>("medium");
   const [zoom, setZoom] = useState(gridSizeToZoom("medium"));

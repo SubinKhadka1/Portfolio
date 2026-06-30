@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import StatsCards from "@/components/admin/StatsCards";
+import { getCategories } from "@/lib/categories";
 import { getDashboardStats } from "@/lib/projects";
 
 export default async function AdminDashboardPage() {
-  const stats = await getDashboardStats();
+  const [stats, categories] = await Promise.all([
+    getDashboardStats(),
+    getCategories("design"),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -29,8 +33,8 @@ export default async function AdminDashboardPage() {
           {
             key: "gallery",
             label: "Manage Design Gallery",
-            count: stats.galleryDesigns,
-            href: "/admin/categories",
+            count: categories.length,
+            href: "/admin/gallery-sections",
             eyebrow: "Design Gallery",
           },
         ].map(({ key, label, count, href, eyebrow }) => (
