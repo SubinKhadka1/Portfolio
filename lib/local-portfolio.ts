@@ -540,6 +540,7 @@ export async function reorderLocalProjects(
 
 export async function getLocalDashboardStats() {
   const store = await ensureStore();
+  const portfolio = await ensurePortfolioStore();
   const all = [...store.design, ...store.video, ...store.client];
 
   return {
@@ -547,6 +548,7 @@ export async function getLocalDashboardStats() {
     designs: store.design.length,
     videos: store.video.length,
     clients: store.client.length,
+    galleryDesigns: portfolio.gallery_designs?.length ?? 0,
     featured: all.filter((p) => p.featured).length,
     published: all.filter((p) => p.published).length,
     unpublished: all.filter((p) => !p.published).length,

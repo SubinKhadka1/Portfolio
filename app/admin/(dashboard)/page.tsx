@@ -21,18 +21,25 @@ export default async function AdminDashboardPage() {
 
       <StatsCards stats={stats} />
 
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { type: "design", label: "Manage Designs", count: stats.designs },
-          { type: "video", label: "Manage Videos", count: stats.videos },
-          { type: "client", label: "Manage Clients", count: stats.clients },
-        ].map(({ type, label, count }) => (
+          { key: "design", label: "Manage Designs", count: stats.designs, href: "/admin/projects?type=design" },
+          { key: "video", label: "Manage Videos", count: stats.videos, href: "/admin/projects?type=video" },
+          { key: "client", label: "Manage Clients", count: stats.clients, href: "/admin/projects?type=client" },
+          {
+            key: "gallery",
+            label: "Manage Design Gallery",
+            count: stats.galleryDesigns,
+            href: "/admin/categories",
+            eyebrow: "Design Gallery",
+          },
+        ].map(({ key, label, count, href, eyebrow }) => (
           <Link
-            key={type}
-            href={`/admin/projects?type=${type}`}
+            key={key}
+            href={href}
             className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-purple-500/30 transition-colors group"
           >
-            <p className="text-zinc-500 text-xs uppercase tracking-wider">{type}</p>
+            <p className="text-zinc-500 text-xs uppercase tracking-wider">{eyebrow ?? key}</p>
             <p className="text-3xl font-bold text-white mt-1">{count}</p>
             <p className="text-purple-400 text-sm mt-2 group-hover:underline">{label} →</p>
           </Link>

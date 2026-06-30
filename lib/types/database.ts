@@ -140,6 +140,7 @@ export type DashboardStats = {
   designs: number;
   videos: number;
   clients: number;
+  galleryDesigns: number;
   featured: number;
   published: number;
   unpublished: number;

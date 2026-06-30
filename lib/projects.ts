@@ -259,11 +259,14 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     return getLocalDashboardStats();
   }
 
+  const local = await getLocalDashboardStats();
+
   return {
     total: data.length,
     designs: data.filter((p) => p.type === "design").length,
     videos: data.filter((p) => p.type === "video").length,
     clients: data.filter((p) => p.type === "client").length,
+    galleryDesigns: local.galleryDesigns,
     featured: data.filter((p) => p.featured).length,
     published: data.filter((p) => p.published).length,
     unpublished: data.filter((p) => !p.published).length,
