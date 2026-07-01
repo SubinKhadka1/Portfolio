@@ -73,7 +73,10 @@ export default function GalleryManagerApp({
   const replaceDesignId = useRef<string | null>(null);
 
   const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
-  const packOptions = useMemo(() => zoomToRowHeights(zoom), [zoom]);
+  const packOptions = useMemo(
+    () => ({ ...zoomToRowHeights(zoom), mobilePacking: false as const }),
+    [zoom]
+  );
 
   const isDirty = useMemo(() => {
     if (JSON.stringify(designs) !== snapshotRef.current) return true;

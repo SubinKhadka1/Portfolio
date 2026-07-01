@@ -2,10 +2,11 @@
 
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  GALLERY_ROW_GAP_PX,
-  galleryWidthOverHeight,
+  computeJustifiedRow,
+  getGalleryPackOptionsForWidth,
   packGalleryRows,
   type GalleryAspectSource,
+  type GalleryPackOptions,
 } from "@/lib/design-gallery-layout";
 
 function reorderList<T>(items: T[], from: number, to: number) {
@@ -25,7 +26,7 @@ export default function DesignGalleryJustifiedGrid<T extends GalleryAspectSource
 }: {
   items: T[];
   className?: string;
-  packOptions?: { gap?: number; minHeight?: number; maxHeight?: number };
+  packOptions?: GalleryPackOptions;
   dragDisabled?: boolean;
   onReorder?: (ordered: T[]) => void;
   renderCard: (item: T, layout: { height: number; index: number; dragging: boolean }) => ReactNode;
@@ -49,35 +50,46 @@ export default function DesignGalleryJustifiedGrid<T extends GalleryAspectSource
     return () => observer.disconnect();
   }, []);
 
-  const gap = packOptions?.gap ?? GALLERY_ROW_GAP_PX;
+  const resolvedPack = useMemo(() => {
+    const responsive = getGalleryPackOptionsForWidth(containerWidth > 0 ? containerWidth : 1152);
+    return {
+      gap: packOptions?.gap ?? responsive.gap,
+      minHeight: packOptions?.minHeight ?? responsive.minHeight,
+      maxHeight: packOptions?.maxHeight ?? responsive.maxHeight,
+      mobilePacking: packOptions?.mobilePacking ?? responsive.mobilePacking,
+    };
+  }, [containerWidth, packOptions]);
 
   const layout = useMemo(() => {
     const width = containerWidth > 0 ? containerWidth : 1152;
-    return packGalleryRows(items, width, {
-      gap,
-      minHeight: packOptions?.minHeight,
-      maxHeight: packOptions?.maxHeight,
-    });
-  }, [items, containerWidth, gap, packOptions?.minHeight, packOptions?.maxHeight]);
+    return packGalleryRows(items, width, resolvedPack);
+  }, [items, containerWidth, resolvedPack]);
 
   if (items.length === 0) return null;
 
   return (
     <div ref={containerRef} className={className ?? "bh-rows"}>
-      {layout.rows.map((row, rowIndex) => {
-        const rowHeight = layout.heights[rowIndex];
+      {layout.rows.map((row) => {
+        const width = containerWidth > 0 ? containerWidth : 1152;
+        const { height: rowHeight, cellWidths } = computeJustifiedRow(
+          row,
+          width,
+          resolvedPack.gap,
+          resolvedPack.maxHeight
+        );
+
         return (
           <div
             key={row.map((item) => item.id).join("-")}
             className="bh-row"
             style={{
               height: rowHeight,
-              gap,
-              marginBottom: gap,
+              gap: resolvedPack.gap,
+              marginBottom: resolvedPack.gap,
             }}
           >
             {row.map((item, index) => {
-              const cellWidth = rowHeight * galleryWidthOverHeight(item);
+              const cellWidth = cellWidths[index];
               const dragging = dragId === item.id;
               const canDrag = !dragDisabled && !!onReorder;
 
