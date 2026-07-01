@@ -602,6 +602,7 @@ export default function GalleryManagerApp({
                         items={section.designs}
                         className="bh-rows"
                         packOptions={packOptions}
+                        stackMode={false}
                         dragDisabled={!editGrid || sort !== "order"}
                         onReorder={(ordered) => saveSectionReorder(section.designs, ordered)}
                         renderCard={(design, { height, dragging }) =>
@@ -616,6 +617,7 @@ export default function GalleryManagerApp({
                   items={visible}
                   className="bh-rows"
                   packOptions={packOptions}
+                  stackMode={false}
                   dragDisabled={!editGrid || sort !== "order"}
                   onReorder={saveReorder}
                   renderCard={(design, { height, dragging }) =>

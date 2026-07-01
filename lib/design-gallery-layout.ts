@@ -1,6 +1,14 @@
 export const GALLERY_ROW_GAP_PX = 4;
 export const GALLERY_MIN_ROW_HEIGHT = 100;
 export const GALLERY_MAX_ROW_HEIGHT = 520;
+/** Below this width the public gallery stacks designs full-width by aspect ratio. */
+export const GALLERY_STACK_MAX_WIDTH = 540;
+
+export type GalleryPackOptions = {
+  gap: number;
+  minHeight: number;
+  maxHeight: number;
+};
 
 export type GalleryAspectSource = {
   imageWidth?: number;
@@ -93,4 +101,52 @@ export function packGalleryRows<T extends GalleryAspectSource>(
 
 export function galleryCardWidth(height: number, item: GalleryAspectSource): number {
   return height * galleryWidthOverHeight(item);
+}
+
+/** Responsive row packing tuned for phone, tablet, and desktop. */
+export function getGalleryPackOptionsForWidth(width: number): GalleryPackOptions {
+  if (width < 360) {
+    return { gap: 3, minHeight: 112, maxHeight: 260 };
+  }
+  if (width < GALLERY_STACK_MAX_WIDTH) {
+    return { gap: 3, minHeight: 124, maxHeight: 340 };
+  }
+  if (width < 768) {
+    return { gap: 4, minHeight: 128, maxHeight: 380 };
+  }
+  if (width < 1024) {
+    return { gap: 4, minHeight: 108, maxHeight: 440 };
+  }
+  return { gap: GALLERY_ROW_GAP_PX, minHeight: GALLERY_MIN_ROW_HEIGHT, maxHeight: GALLERY_MAX_ROW_HEIGHT };
+}
+
+export function shouldStackGallery(
+  width: number,
+  stackMode: boolean | "auto" = "auto"
+): boolean {
+  if (stackMode === false) return false;
+  if (stackMode === true) return true;
+  return width > 0 && width < GALLERY_STACK_MAX_WIDTH;
+}
+
+/** Row cell widths that fill the container (last cell absorbs rounding slack). */
+export function computeJustifiedRow<T extends GalleryAspectSource>(
+  row: T[],
+  containerWidth: number,
+  gap: number,
+  maxHeight: number
+): { height: number; cellWidths: number[] } {
+  const gaps = Math.max(0, row.length - 1) * gap;
+  const totalRatio = row.reduce((sum, item) => sum + galleryWidthOverHeight(item), 0);
+  let height = totalRatio > 0 ? (containerWidth - gaps) / totalRatio : GALLERY_MIN_ROW_HEIGHT;
+  height = Math.min(height, maxHeight);
+
+  const cellWidths = row.map((item) => height * galleryWidthOverHeight(item));
+  const used = cellWidths.reduce((sum, w) => sum + w, 0) + gaps;
+  const leftover = containerWidth - used;
+  if (leftover > 0.5 && cellWidths.length > 0) {
+    cellWidths[cellWidths.length - 1] += leftover;
+  }
+
+  return { height, cellWidths };
 }

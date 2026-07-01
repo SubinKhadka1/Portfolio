@@ -2,9 +2,11 @@
 
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  GALLERY_ROW_GAP_PX,
+  computeJustifiedRow,
   galleryWidthOverHeight,
+  getGalleryPackOptionsForWidth,
   packGalleryRows,
+  shouldStackGallery,
   type GalleryAspectSource,
 } from "@/lib/design-gallery-layout";
 
@@ -15,10 +17,18 @@ function reorderList<T>(items: T[], from: number, to: number) {
   return next;
 }
 
+export type GalleryCardLayout = {
+  height: number;
+  index: number;
+  dragging: boolean;
+  mode: "justified" | "stack";
+};
+
 export default function DesignGalleryJustifiedGrid<T extends GalleryAspectSource & { id: string }>({
   items,
   className,
   packOptions,
+  stackMode = "auto",
   dragDisabled,
   onReorder,
   renderCard,
@@ -26,9 +36,10 @@ export default function DesignGalleryJustifiedGrid<T extends GalleryAspectSource
   items: T[];
   className?: string;
   packOptions?: { gap?: number; minHeight?: number; maxHeight?: number };
+  stackMode?: boolean | "auto";
   dragDisabled?: boolean;
   onReorder?: (ordered: T[]) => void;
-  renderCard: (item: T, layout: { height: number; index: number; dragging: boolean }) => ReactNode;
+  renderCard: (item: T, layout: GalleryCardLayout) => ReactNode;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -49,23 +60,48 @@ export default function DesignGalleryJustifiedGrid<T extends GalleryAspectSource
     return () => observer.disconnect();
   }, []);
 
-  const gap = packOptions?.gap ?? GALLERY_ROW_GAP_PX;
+  const responsivePack = useMemo(
+    () => getGalleryPackOptionsForWidth(containerWidth > 0 ? containerWidth : 1152),
+    [containerWidth]
+  );
+
+  const gap = packOptions?.gap ?? responsivePack.gap;
+  const minHeight = packOptions?.minHeight ?? responsivePack.minHeight;
+  const maxHeight = packOptions?.maxHeight ?? responsivePack.maxHeight;
+  const useStack = shouldStackGallery(containerWidth, stackMode);
 
   const layout = useMemo(() => {
     const width = containerWidth > 0 ? containerWidth : 1152;
-    return packGalleryRows(items, width, {
-      gap,
-      minHeight: packOptions?.minHeight,
-      maxHeight: packOptions?.maxHeight,
-    });
-  }, [items, containerWidth, gap, packOptions?.minHeight, packOptions?.maxHeight]);
+    return packGalleryRows(items, width, { gap, minHeight, maxHeight });
+  }, [items, containerWidth, gap, minHeight, maxHeight]);
 
   if (items.length === 0) return null;
+
+  if (useStack) {
+    return (
+      <div ref={containerRef} className={`${className ?? "bh-rows"} gallery-stack`}>
+        {items.map((item, index) => {
+          const ratio = galleryWidthOverHeight(item);
+          return (
+            <div
+              key={item.id}
+              className="gallery-stack__cell"
+              style={{ aspectRatio: String(ratio) }}
+            >
+              {renderCard(item, { height: 0, index, dragging: false, mode: "stack" })}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} className={className ?? "bh-rows"}>
       {layout.rows.map((row, rowIndex) => {
-        const rowHeight = layout.heights[rowIndex];
+        const width = containerWidth > 0 ? containerWidth : 1152;
+        const { height: rowHeight, cellWidths } = computeJustifiedRow(row, width, gap, maxHeight);
+
         return (
           <div
             key={row.map((item) => item.id).join("-")}
@@ -77,7 +113,7 @@ export default function DesignGalleryJustifiedGrid<T extends GalleryAspectSource
             }}
           >
             {row.map((item, index) => {
-              const cellWidth = rowHeight * galleryWidthOverHeight(item);
+              const cellWidth = cellWidths[index];
               const dragging = dragId === item.id;
               const canDrag = !dragDisabled && !!onReorder;
 
@@ -108,7 +144,7 @@ export default function DesignGalleryJustifiedGrid<T extends GalleryAspectSource
                     setDragId(null);
                   }}
                 >
-                  {renderCard(item, { height: rowHeight, index, dragging })}
+                  {renderCard(item, { height: rowHeight, index, dragging, mode: "justified" })}
                 </div>
               );
             })}
