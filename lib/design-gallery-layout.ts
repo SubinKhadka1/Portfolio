@@ -61,6 +61,16 @@ export function aspectFitsRow(row: GalleryAspectSource[], next: GalleryAspectSou
   return spread <= GALLERY_MOBILE_ASPECT_TOLERANCE;
 }
 
+/** True when every item in the row has a similar aspect ratio (e.g. two brochures). */
+function rowHasSimilarAspects(row: GalleryAspectSource[]): boolean {
+  if (row.length < 2) return false;
+  const avg = rowAspectAverage(row);
+  return row.every((item) => {
+    const spread = Math.abs(galleryWidthOverHeight(item) - avg) / Math.max(avg, 0.01);
+    return spread <= GALLERY_MOBILE_ASPECT_TOLERANCE;
+  });
+}
+
 export function galleryRowHeight(
   items: GalleryAspectSource[],
   containerWidth: number,
@@ -144,6 +154,8 @@ export function packGalleryRows<T extends GalleryAspectSource>(
       row.length > 1 &&
       galleryRowHeight(row, containerWidth, gap) > maxHeight
     ) {
+      // Desktop: keep similar pairs (brochures, flyers) together — clamp height instead of splitting.
+      if (rowHasSimilarAspects(row)) break;
       index -= 1;
       row.pop();
     }
