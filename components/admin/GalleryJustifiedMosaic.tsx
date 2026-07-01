@@ -53,7 +53,6 @@ export default function GalleryJustifiedMosaic({
     <DesignGalleryJustifiedGrid
       items={layoutItems}
       className="dgm-mosaic"
-      stackMode={false}
       renderCard={(design, { height }) => {
         const isDragging = dragId === design.id;
         const hint =

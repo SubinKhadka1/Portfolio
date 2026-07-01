@@ -10,20 +10,18 @@ import DesignGalleryLightbox from "@/components/DesignGalleryLightbox";
 function GalleryCard({
   design,
   height,
-  mode,
   onOpen,
 }: {
   design: DesignItem;
   height: number;
-  mode: "justified" | "stack";
   onOpen: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={`gallery-card gallery-card--justified${mode === "stack" ? " gallery-card--stacked" : ""}`}
-      style={mode === "justified" ? { height } : undefined}
+      className="gallery-card gallery-card--justified"
+      style={{ height }}
       aria-label={`View ${design.title}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -31,11 +29,9 @@ function GalleryCard({
         src={design.image}
         alt={design.title}
         loading="lazy"
-        decoding="async"
         className="gallery-card__img"
         width={design.imageWidth}
         height={design.imageHeight}
-        sizes={mode === "stack" ? "100vw" : "(max-width: 540px) 100vw, (max-width: 1024px) 50vw, 33vw"}
         draggable={false}
       />
       {design.featured ? (
@@ -64,13 +60,8 @@ function JustifiedSection({
       <DesignGalleryJustifiedGrid
         items={designs}
         className="gallery-justified"
-        renderCard={(design, { height, mode }) => (
-          <GalleryCard
-            design={design}
-            height={height}
-            mode={mode}
-            onOpen={() => onOpen(design.id)}
-          />
+        renderCard={(design, { height }) => (
+          <GalleryCard design={design} height={height} onOpen={() => onOpen(design.id)} />
         )}
       />
     </section>
