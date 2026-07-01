@@ -139,7 +139,11 @@ export function packGalleryRows<T extends GalleryAspectSource>(
       if (lastRatio >= 2.35 || lastRatio <= 0.38) break;
     }
 
-    while (row.length > 1 && galleryRowHeight(row, containerWidth, gap) > maxHeight) {
+    while (
+      !mobilePacking &&
+      row.length > 1 &&
+      galleryRowHeight(row, containerWidth, gap) > maxHeight
+    ) {
       index -= 1;
       row.pop();
     }
@@ -157,7 +161,13 @@ export function galleryCardWidth(height: number, item: GalleryAspectSource): num
 /** Responsive row packing tuned for phone, tablet, and desktop. */
 export function getGalleryPackOptionsForWidth(width: number): GalleryPackOptions {
   if (width < GALLERY_MOBILE_MAX_WIDTH) {
-    return { gap: 4, minHeight: 86, maxHeight: 300, mobilePacking: true };
+    return {
+      gap: 4,
+      minHeight: 86,
+      // Tall pairs (pull-up banners) need more headroom on large phones — clamp, never split.
+      maxHeight: Math.round(Math.min(420, width * 0.92)),
+      mobilePacking: true,
+    };
   }
   if (width < 768) {
     return { gap: 4, minHeight: 110, maxHeight: 380, mobilePacking: false };

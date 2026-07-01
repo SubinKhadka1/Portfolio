@@ -2615,6 +2615,13 @@ body.page-designs ::-webkit-scrollbar-thumb {
   max-width: 100%;
 }
 
+@media (max-width: 540px) {
+  .gallery-justified .bh-row,
+  .gallery-page .bh-row {
+    justify-content: center;
+  }
+}
+
 .bh-row__cell {
   flex-shrink: 0;
   overflow: hidden;
