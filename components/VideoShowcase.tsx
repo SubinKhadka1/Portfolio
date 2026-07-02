@@ -227,7 +227,7 @@ function ReelSlide({ video, onOpen }: { video: VideoItem; onOpen: () => void }) 
       el.muted = true;
       el.defaultMuted = true;
       el.playsInline = true;
-      el.preload = "auto";
+      el.preload = "metadata";
       seekToStart();
       const attempt = el.play();
       if (attempt) {

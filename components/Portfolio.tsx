@@ -7,6 +7,7 @@ import { loopForMarquee, groupDesignsByMarqueeRow } from "@/lib/marquee";
 import { PORTRAIT_DESIGN_IMAGES } from "@/lib/static-data";
 import MarqueeTrack from "@/components/MarqueeTrack";
 import HoldDesignPreview from "@/components/HoldDesignPreview";
+import OptimizedImage from "@/components/OptimizedImage";
 import { useHoldZoom } from "@/lib/hold-zoom";
 
 function DesignCard({ design }: { design: DesignItem }) {
@@ -23,10 +24,13 @@ function DesignCard({ design }: { design: DesignItem }) {
           isPortrait ? "design-slide--portrait" : "design-slide--square"
         } ${zoomed && !useOverlay ? "design-slide--zoomed" : ""}`}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <OptimizedImage
           src={design.image}
           alt={design.title}
+          width={isPortrait ? 304 : 380}
+          height={380}
+          sizes="(max-width: 640px) 168px, (max-width: 1024px) 220px, 380px"
+          loading="lazy"
           className={`design-slide-img ${
             isPortrait ? "design-slide-img--portrait" : "design-slide-img--square"
           }`}

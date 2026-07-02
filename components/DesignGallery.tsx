@@ -6,6 +6,7 @@ import type { Category, DesignItem } from "@/lib/types/database";
 import { groupDesignsByCategory } from "@/lib/design-gallery";
 import DesignGalleryJustifiedGrid from "@/components/DesignGalleryJustifiedGrid";
 import DesignGalleryLightbox from "@/components/DesignGalleryLightbox";
+import OptimizedImage from "@/components/OptimizedImage";
 
 function GalleryCard({
   design,
@@ -24,14 +25,14 @@ function GalleryCard({
       style={{ height }}
       aria-label={`View ${design.title}`}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <OptimizedImage
         src={design.image}
         alt={design.title}
+        width={design.imageWidth || 1200}
+        height={design.imageHeight || 900}
+        sizes="(max-width: 640px) 90vw, (max-width: 1024px) 50vw, 33vw"
         loading="lazy"
         className="gallery-card__img"
-        width={design.imageWidth}
-        height={design.imageHeight}
         draggable={false}
       />
       {design.featured ? (

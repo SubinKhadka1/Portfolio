@@ -3,7 +3,8 @@ import Footer from "@/components/Footer";
 import DesignGallery from "@/components/DesignGallery";
 import { getDesignGalleryPageData } from "@/lib/projects";
 
-export const dynamic = "force-dynamic";
+/** Cache gallery page; admin mutations call revalidatePath("/designs"). */
+export const revalidate = 300;
 
 export const metadata = {
   title: "My Designs | Subin Khadka",

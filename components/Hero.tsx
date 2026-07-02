@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRef, useState, useEffect, ReactNode } from "react";
 import Instagram from "@/components/icons/Instagram";
 import { getWhatsAppUrl, SOCIAL_LINKS, WHATSAPP_GREETING } from "@/lib/site";
+import OptimizedImage from "@/components/OptimizedImage";
 
 function SocialIcon({ children }: { children: ReactNode }) {
   return <span className="[&>svg]:w-5 [&>svg]:h-5">{children}</span>;
@@ -221,10 +222,13 @@ export default function Hero({
               {/* Photo container — smaller size */}
               <div className="relative w-[230px] h-[320px] sm:w-[280px] sm:h-[380px] md:w-[320px] md:h-[430px] lg:w-[350px] lg:h-[470px] xl:w-[380px] xl:h-[510px] rounded-[24px] sm:rounded-[28px] overflow-hidden border border-white/10 bg-[#1a100c] shadow-[0_0_60px_rgba(168,85,247,0.2)]">
                 {!imgFailed ? (
-                  <img
+                  <OptimizedImage
                     src={heroImage}
                     alt={heroAlt}
-                    className="w-full h-full object-cover object-center scale-110"
+                    fill
+                    priority
+                    sizes="(max-width: 640px) 230px, (max-width: 1024px) 320px, 380px"
+                    className="object-cover object-center scale-110"
                     onError={() => setImgFailed(true)}
                   />
                 ) : (

@@ -3,13 +3,17 @@ import { motion } from "framer-motion";
 import type { ClientItem } from "@/lib/types/database";
 import { loopForMarquee, groupDesignsByMarqueeRow } from "@/lib/marquee";
 import MarqueeTrack from "@/components/MarqueeTrack";
+import OptimizedImage from "@/components/OptimizedImage";
 
 function ClientLogo({ name, logo, className }: { name: string; logo: string; className?: string }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <OptimizedImage
       src={logo}
       alt={`${name} logo`}
+      width={250}
+      height={96}
+      sizes="(max-width: 768px) 160px, 250px"
+      loading="lazy"
       className={`h-20 md:h-24 w-auto max-w-[200px] md:max-w-[250px] object-contain opacity-100 ${className || ""}`}
       draggable={false}
     />

@@ -44,6 +44,7 @@ export default function MarqueeTrack({
   const [userPaused, setUserPaused] = useState(false);
   const [holdPaused, setHoldPaused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const wheelTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initializedRef = useRef(false);
   const speedRef = useRef(0);
@@ -81,6 +82,18 @@ export default function MarqueeTrack({
   };
 
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { rootMargin: "120px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     measureLoop();
     const row = rowRef.current;
     if (!row) return;
@@ -101,7 +114,7 @@ export default function MarqueeTrack({
     const wrapped = wrapMarqueeX(current, loopWidth);
     if (wrapped !== current) x.set(wrapped);
 
-    if (!scrollEnabled || userPaused || holdPaused || isDragging) return;
+    if (!scrollEnabled || !isVisible || userPaused || holdPaused || isDragging) return;
 
     const step = speedRef.current * (delta / 1000);
     const next =

@@ -1,17 +1,20 @@
+import dynamic from "next/dynamic";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
-import About from "@/components/About";
-import Services from "@/components/Services";
 import Portfolio from "@/components/Portfolio";
-import VideoShowcase from "@/components/VideoShowcase";
-import Clients from "@/components/Clients";
-import Testimonials from "@/components/Testimonials";
-import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import { getClients, getDesigns, getVideos } from "@/lib/projects";
 import { getSiteSettings } from "@/lib/site-settings-read";
 
-export const dynamic = "force-dynamic";
+const About = dynamic(() => import("@/components/About"));
+const Services = dynamic(() => import("@/components/Services"));
+const VideoShowcase = dynamic(() => import("@/components/VideoShowcase"));
+const Clients = dynamic(() => import("@/components/Clients"));
+const Testimonials = dynamic(() => import("@/components/Testimonials"));
+const Contact = dynamic(() => import("@/components/Contact"));
+
+/** Cache homepage; admin mutations call revalidatePath("/"). */
+export const revalidate = 300;
 
 export default async function Home() {
   const [designs, videos, clients, settings] = await Promise.all([
