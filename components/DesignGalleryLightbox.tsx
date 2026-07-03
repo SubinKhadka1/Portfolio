@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Minus, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { DesignItem } from "@/lib/types/database";
 
 export default function DesignGalleryLightbox({
@@ -18,7 +18,6 @@ export default function DesignGalleryLightbox({
 }) {
   const activeIndex = designs.findIndex((d) => d.id === activeId);
   const active = activeIndex >= 0 ? designs[activeIndex] : null;
-  const [zoom, setZoom] = useState(1);
 
   const goPrev = useCallback(() => {
     if (activeIndex > 0) onNavigate(designs[activeIndex - 1].id);
@@ -27,10 +26,6 @@ export default function DesignGalleryLightbox({
   const goNext = useCallback(() => {
     if (activeIndex < designs.length - 1) onNavigate(designs[activeIndex + 1].id);
   }, [activeIndex, designs, onNavigate]);
-
-  useEffect(() => {
-    setZoom(1);
-  }, [activeId]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -61,34 +56,6 @@ export default function DesignGalleryLightbox({
         className="gallery-lightbox"
         onClick={onClose}
       >
-        <div className="gallery-lightbox__toolbar" onClick={(e) => e.stopPropagation()}>
-          <div className="gallery-lightbox__counter">
-            {activeIndex + 1} / {designs.length}
-          </div>
-          <div className="gallery-lightbox__zoom-controls">
-            <button
-              type="button"
-              onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
-              className="gallery-lightbox__btn"
-              aria-label="Zoom out"
-            >
-              <Minus size={16} />
-            </button>
-            <span className="gallery-lightbox__zoom-label">{Math.round(zoom * 100)}%</span>
-            <button
-              type="button"
-              onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
-              className="gallery-lightbox__btn"
-              aria-label="Zoom in"
-            >
-              <Plus size={16} />
-            </button>
-          </div>
-          <button type="button" onClick={onClose} className="gallery-lightbox__btn" aria-label="Close">
-            <X size={18} />
-          </button>
-        </div>
-
         {activeIndex > 0 ? (
           <button
             type="button"
@@ -125,10 +92,15 @@ export default function DesignGalleryLightbox({
           className="gallery-lightbox__stage"
           onClick={(e) => e.stopPropagation()}
         >
-          <div
-            className="gallery-lightbox__image-wrap"
-            style={{ transform: `scale(${zoom})` }}
-          >
+          <div className="gallery-lightbox__image-wrap">
+            <button
+              type="button"
+              onClick={onClose}
+              className="gallery-lightbox__close"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={active.image}
