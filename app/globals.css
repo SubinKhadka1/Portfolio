@@ -2622,6 +2622,13 @@ body.page-designs ::-webkit-scrollbar-thumb {
   }
 }
 
+@media (min-width: 541px) and (max-width: 1023px) {
+  .gallery-justified .bh-row,
+  .gallery-page .bh-row {
+    justify-content: center;
+  }
+}
+
 .bh-row__cell {
   flex-shrink: 0;
   overflow: hidden;

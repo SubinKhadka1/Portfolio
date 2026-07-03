@@ -30,7 +30,7 @@ function GalleryCard({
         alt={design.title}
         width={design.imageWidth || 1200}
         height={design.imageHeight || 900}
-        sizes="(max-width: 640px) 90vw, (max-width: 1024px) 50vw, 33vw"
+        sizes="(max-width: 540px) 90vw, (max-width: 1023px) 45vw, 33vw"
         loading="lazy"
         className="gallery-card__img"
         draggable={false}

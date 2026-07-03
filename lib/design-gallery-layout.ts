@@ -2,6 +2,8 @@ export const GALLERY_ROW_GAP_PX = 4;
 export const GALLERY_MIN_ROW_HEIGHT = 100;
 export const GALLERY_MAX_ROW_HEIGHT = 520;
 export const GALLERY_MOBILE_MAX_WIDTH = 540;
+/** iPad / tablet — compact rows up to this width; desktop justified layout above. */
+export const GALLERY_TABLET_MAX_WIDTH = 1024;
 /** Wide designs (tickets, horizontal strips) span a full row on mobile. */
 export const GALLERY_MOBILE_LANDSCAPE_RATIO = 1.85;
 /** On mobile, only group designs with similar proportions in the same row. */
@@ -109,8 +111,7 @@ export function packGalleryRows<T extends GalleryAspectSource>(
   const gap = options?.gap ?? GALLERY_ROW_GAP_PX;
   const minHeight = options?.minHeight ?? GALLERY_MIN_ROW_HEIGHT;
   const maxHeight = options?.maxHeight ?? GALLERY_MAX_ROW_HEIGHT;
-  const mobilePacking =
-    options?.mobilePacking !== false && containerWidth < GALLERY_MOBILE_MAX_WIDTH;
+  const mobilePacking = options?.mobilePacking === true;
 
   if (items.length === 0 || containerWidth <= 0) {
     return { rows: [], heights: [] };
@@ -181,11 +182,14 @@ export function getGalleryPackOptionsForWidth(width: number): GalleryPackOptions
       mobilePacking: true,
     };
   }
-  if (width < 768) {
-    return { gap: 4, minHeight: 110, maxHeight: 380, mobilePacking: false };
-  }
-  if (width < 1024) {
-    return { gap: 4, minHeight: 100, maxHeight: 440, mobilePacking: false };
+  if (width < GALLERY_TABLET_MAX_WIDTH) {
+    return {
+      gap: 4,
+      minHeight: 96,
+      // iPad: same aspect-aware grouping as phone, with taller rows for the wider screen.
+      maxHeight: Math.round(Math.min(480, width * 0.58)),
+      mobilePacking: true,
+    };
   }
   return {
     gap: GALLERY_ROW_GAP_PX,
