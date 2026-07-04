@@ -1,6 +1,7 @@
 import { head, put } from "@vercel/blob";
 import { promises as fs } from "fs";
 import path from "path";
+import { isNextBuildPhase } from "@/lib/is-build-time";
 import { isBlobStorageEnabled, isVercelProduction } from "@/lib/storage-mode";
 
 function sleep(ms: number) {
@@ -53,8 +54,9 @@ export async function readJsonFile<T>(relativePath: string): Promise<T | null> {
       if (attempt < 3) await sleep(100 * (attempt + 1));
     }
 
-    // Never use the read-only Git bundle on live Vercel when Blob is the source of truth.
-    if (isVercelProduction()) return null;
+    // Live runtime must use Blob only. During `next build` prerender, fall back to
+    // the Git-bundled JSON so ISR pages can compile when Blob is unavailable.
+    if (isVercelProduction() && !isNextBuildPhase()) return null;
   }
 
   return readDiskJson<T>(relativePath);

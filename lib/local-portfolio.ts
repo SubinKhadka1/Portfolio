@@ -232,7 +232,11 @@ async function loadPortfolioStore(): Promise<PortfolioStore> {
   const fromBlob = await readJsonFile<Partial<PortfolioStore>>(PORTFOLIO_JSON);
   if (fromBlob) return migrateStore(normalizePortfolioStore(fromBlob));
 
-  if (isBlobStorageEnabled() && (await blobJsonExists(PORTFOLIO_JSON))) {
+  if (
+    isBlobStorageEnabled() &&
+    (await blobJsonExists(PORTFOLIO_JSON)) &&
+    !isNextBuildPhase()
+  ) {
     throw new Error("Could not read live portfolio data. Please try again.");
   }
 
