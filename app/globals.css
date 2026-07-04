@@ -2585,24 +2585,11 @@ body.page-designs ::-webkit-scrollbar-thumb {
   display: flex;
   width: 100%;
   max-width: 100%;
-}
-
-@media (max-width: 540px) {
-  .gallery-justified .bh-row,
-  .gallery-page .bh-row {
-    justify-content: center;
-  }
-}
-
-@media (min-width: 541px) and (max-width: 1023px) {
-  .gallery-justified .bh-row,
-  .gallery-page .bh-row {
-    justify-content: center;
-  }
+  justify-content: flex-start;
 }
 
 .bh-row__cell {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   overflow: hidden;
   min-width: 0;
 }
