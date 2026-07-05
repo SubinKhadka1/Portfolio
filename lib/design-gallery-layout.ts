@@ -64,13 +64,21 @@ export function aspectFitsRow(row: GalleryAspectSource[], next: GalleryAspectSou
 }
 
 /** True when every item in the row has a similar aspect ratio (e.g. two brochures). */
-function rowHasSimilarAspects(row: GalleryAspectSource[]): boolean {
+export function rowHasSimilarAspects(row: GalleryAspectSource[]): boolean {
   if (row.length < 2) return false;
   const avg = rowAspectAverage(row);
   return row.every((item) => {
     const spread = Math.abs(galleryWidthOverHeight(item) - avg) / Math.max(avg, 0.01);
     return spread <= GALLERY_MOBILE_ASPECT_TOLERANCE;
   });
+}
+
+/** Tall portrait rows stay at 2 on phone / 3 on tablet so banners don't cram together. */
+function getMaxMobileRowItems(width: number, row: GalleryAspectSource[]): number {
+  const tallRow = row.length > 0 && row.every((item) => galleryWidthOverHeight(item) < 0.85);
+  if (width < GALLERY_MOBILE_MAX_WIDTH) return tallRow ? 2 : 4;
+  if (width < GALLERY_TABLET_MAX_WIDTH) return tallRow ? 3 : 5;
+  return Number.POSITIVE_INFINITY;
 }
 
 export function galleryRowHeight(
@@ -134,6 +142,7 @@ export function packGalleryRows<T extends GalleryAspectSource>(
       const next = items[index];
 
       if (mobilePacking) {
+        if (row.length >= getMaxMobileRowItems(containerWidth, row)) break;
         if (isGalleryLandscape(next)) break;
         if (!aspectFitsRow(row, next)) break;
       }
@@ -200,9 +209,8 @@ export function getGalleryPackOptionsForWidth(width: number): GalleryPackOptions
 }
 
 /**
- * Row cell widths that always fill the container (Behance-style).
- * Height is derived from width so short rows (e.g. two pull-ups) never leave side gaps.
- * `maxHeight` is only used while packing rows, not for display sizing.
+ * Row cell widths that always fill the container edge-to-edge.
+ * Display height is never clamped here — maxHeight only affects how many items pack per row.
  */
 export function computeJustifiedRow<T extends GalleryAspectSource>(
   row: T[],
@@ -213,20 +221,16 @@ export function computeJustifiedRow<T extends GalleryAspectSource>(
   const gaps = Math.max(0, row.length - 1) * gap;
   const usable = Math.max(0, containerWidth - gaps);
   const totalRatio = row.reduce((sum, item) => sum + galleryWidthOverHeight(item), 0);
-  const height = totalRatio > 0 ? usable / totalRatio : GALLERY_MIN_ROW_HEIGHT;
+  if (totalRatio <= 0 || row.length === 0) {
+    return { height: GALLERY_MIN_ROW_HEIGHT, cellWidths: [] };
+  }
 
+  const height = usable / totalRatio;
   const cellWidths = row.map((item) => height * galleryWidthOverHeight(item));
   const used = cellWidths.reduce((sum, w) => sum + w, 0);
-  const leftover = usable - used;
-  if (Math.abs(leftover) > 0.5 && cellWidths.length > 0) {
-    // Spread rounding error across cells so no single cell looks stretched.
-    const share = leftover / cellWidths.length;
-    for (let i = 0; i < cellWidths.length; i++) {
-      cellWidths[i] += share;
-    }
-    // Absorb any remaining sub-pixel slack on the last cell.
-    const finalUsed = cellWidths.reduce((sum, w) => sum + w, 0);
-    cellWidths[cellWidths.length - 1] += usable - finalUsed;
+  const delta = usable - used;
+  if (Math.abs(delta) > 0.01) {
+    cellWidths[cellWidths.length - 1] += delta;
   }
 
   return { height, cellWidths };
