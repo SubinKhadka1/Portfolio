@@ -145,25 +145,24 @@ export async function getProjects(
 }
 
 export async function getDesigns(): Promise<DesignItem[]> {
+  // Homepage marquee is managed by independent homepage design records.
+  // Always read the same source that /admin/projects?type=design edits.
+  const homepageDesigns = await getLocalHomepageDesigns();
+  if (homepageDesigns.length > 0) {
+    return homepageDesigns.map(homepageDesignToDesignItem);
+  }
+
+  // Backward-compatible fallback for older datasets without homepage_designs.
   if (!isSupabaseConfigured()) {
-    const designs = await getLocalHomepageDesigns();
-    return designs.map(homepageDesignToDesignItem);
+    return [];
   }
 
   const supabase = await tryCreateClient();
-  if (!supabase) {
-    const designs = await getLocalHomepageDesigns();
-    return designs.map(homepageDesignToDesignItem);
-  }
+  if (!supabase) return [];
 
-  const [projects, categories] = await Promise.all([
-    getProjects("design"),
-    getCategories("design"),
-  ]);
+  const [projects, categories] = await Promise.all([getProjects("design"), getCategories("design")]);
   const byId = new Map(categories.map((c) => [c.id, c]));
-  return filterHomepageProjects(projects).map((p) =>
-    projectToDesign(p, p.category_id ? byId.get(p.category_id) : null)
-  );
+  return filterHomepageProjects(projects).map((p) => projectToDesign(p, p.category_id ? byId.get(p.category_id) : null));
 }
 
 export async function getHomepageDesignProjects(options?: {
