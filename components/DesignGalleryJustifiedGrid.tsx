@@ -97,13 +97,7 @@ export default function DesignGalleryJustifiedGrid<T extends GalleryAspectSource
                 <div
                   key={item.id}
                   className={`bh-row__cell${dragging ? " bh-row__cell--dragging" : ""}`}
-                  style={{
-                    width: cellWidth,
-                    minWidth: cellWidth,
-                    maxWidth: cellWidth,
-                    height: rowHeight,
-                    flex: `0 0 ${cellWidth}px`,
-                  }}
+                  style={{ width: cellWidth, height: rowHeight }}
                   draggable={canDrag}
                   onDragStart={(e) => {
                     const target = e.target as HTMLElement;
