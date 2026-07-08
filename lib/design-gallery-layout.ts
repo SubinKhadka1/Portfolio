@@ -199,34 +199,23 @@ export function getGalleryPackOptionsForWidth(width: number): GalleryPackOptions
   };
 }
 
-/**
- * Row cell widths that always fill the container (Behance-style).
- * Height is derived from width so short rows (e.g. two pull-ups) never leave side gaps.
- * `maxHeight` is only used while packing rows, not for display sizing.
- */
+/** Row cell widths that fill the container (last cell absorbs rounding slack). */
 export function computeJustifiedRow<T extends GalleryAspectSource>(
   row: T[],
   containerWidth: number,
   gap: number,
-  _maxHeight: number
+  maxHeight: number
 ): { height: number; cellWidths: number[] } {
   const gaps = Math.max(0, row.length - 1) * gap;
-  const usable = Math.max(0, containerWidth - gaps);
   const totalRatio = row.reduce((sum, item) => sum + galleryWidthOverHeight(item), 0);
-  const height = totalRatio > 0 ? usable / totalRatio : GALLERY_MIN_ROW_HEIGHT;
+  let height = totalRatio > 0 ? (containerWidth - gaps) / totalRatio : GALLERY_MIN_ROW_HEIGHT;
+  height = Math.min(height, maxHeight);
 
   const cellWidths = row.map((item) => height * galleryWidthOverHeight(item));
-  const used = cellWidths.reduce((sum, w) => sum + w, 0);
-  const leftover = usable - used;
-  if (Math.abs(leftover) > 0.5 && cellWidths.length > 0) {
-    // Spread rounding error across cells so no single cell looks stretched.
-    const share = leftover / cellWidths.length;
-    for (let i = 0; i < cellWidths.length; i++) {
-      cellWidths[i] += share;
-    }
-    // Absorb any remaining sub-pixel slack on the last cell.
-    const finalUsed = cellWidths.reduce((sum, w) => sum + w, 0);
-    cellWidths[cellWidths.length - 1] += usable - finalUsed;
+  const used = cellWidths.reduce((sum, w) => sum + w, 0) + gaps;
+  const leftover = containerWidth - used;
+  if (leftover > 0.5 && cellWidths.length > 0) {
+    cellWidths[cellWidths.length - 1] += leftover;
   }
 
   return { height, cellWidths };
