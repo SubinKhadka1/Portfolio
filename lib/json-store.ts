@@ -1,7 +1,6 @@
 import { head, put } from "@vercel/blob";
 import { promises as fs } from "fs";
 import path from "path";
-import { isNextBuildPhase } from "@/lib/is-build-time";
 import { isBlobStorageEnabled, isVercelProduction } from "@/lib/storage-mode";
 
 function sleep(ms: number) {
@@ -44,19 +43,16 @@ export async function blobJsonExists(relativePath: string): Promise<boolean> {
 
 export async function readJsonFile<T>(relativePath: string): Promise<T | null> {
   if (isBlobStorageEnabled()) {
-    for (let attempt = 0; attempt < 4; attempt++) {
+    for (let attempt = 0; attempt < 6; attempt++) {
       try {
         const data = await readBlobJson<T>(relativePath, attempt);
         if (data !== null) return data;
       } catch {
         // retry
       }
-      if (attempt < 3) await sleep(100 * (attempt + 1));
+      if (attempt < 5) await sleep(150 * (attempt + 1));
     }
-
-    // Live runtime must use Blob only. During `next build` prerender, fall back to
-    // the Git-bundled JSON so ISR pages can compile when Blob is unavailable.
-    if (isVercelProduction() && !isNextBuildPhase()) return null;
+    // Blob temporarily unavailable — fall back to the Git-bundled JSON so pages do not 500.
   }
 
   return readDiskJson<T>(relativePath);

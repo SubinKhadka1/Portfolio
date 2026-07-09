@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { isNextBuildPhase } from "@/lib/is-build-time";
-import { blobJsonExists, readJsonFile, writeJsonFile } from "@/lib/json-store";
+import { readJsonFile, writeJsonFile } from "@/lib/json-store";
 import { isBlobStorageEnabled } from "@/lib/storage-mode";
 import { staticProjectsForAdmin } from "@/lib/seed";
 import { marqueeSortOrder, clampMarqueeRow } from "@/lib/marquee";
@@ -229,16 +229,8 @@ async function loadPortfolioStore(): Promise<PortfolioStore> {
   ) {
     return cloneStore(portfolioMemoryCache);
   }
-  const fromBlob = await readJsonFile<Partial<PortfolioStore>>(PORTFOLIO_JSON);
-  if (fromBlob) return migrateStore(normalizePortfolioStore(fromBlob));
-
-  if (
-    isBlobStorageEnabled() &&
-    (await blobJsonExists(PORTFOLIO_JSON)) &&
-    !isNextBuildPhase()
-  ) {
-    throw new Error("Could not read live portfolio data. Please try again.");
-  }
+  const fromStore = await readJsonFile<Partial<PortfolioStore>>(PORTFOLIO_JSON);
+  if (fromStore) return migrateStore(normalizePortfolioStore(fromStore));
 
   if (isNextBuildPhase()) {
     const design = staticProjectsForAdmin("design");
