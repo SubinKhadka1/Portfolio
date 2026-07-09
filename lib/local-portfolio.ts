@@ -4,7 +4,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { isNextBuildPhase } from "@/lib/is-build-time";
 import { readJsonFile, writeJsonFile } from "@/lib/json-store";
-import { isBlobStorageEnabled } from "@/lib/storage-mode";
+import { isBlobStorageEnabled, isVercelProduction } from "@/lib/storage-mode";
 import { staticProjectsForAdmin } from "@/lib/seed";
 import { marqueeSortOrder, clampMarqueeRow } from "@/lib/marquee";
 import {
@@ -220,7 +220,7 @@ let portfolioWriteLock: Promise<unknown> = Promise.resolve();
 /** Same-instance reads after a write see the data we just saved (blob CDN can lag). */
 let portfolioMemoryCache: PortfolioStore | null = null;
 let portfolioMemoryCacheAt = 0;
-const PORTFOLIO_MEMORY_TTL_MS = 30_000;
+const PORTFOLIO_MEMORY_TTL_MS = 300_000;
 
 async function loadPortfolioStore(): Promise<PortfolioStore> {
   if (
@@ -241,6 +241,10 @@ async function loadPortfolioStore(): Promise<PortfolioStore> {
         client: staticProjectsForAdmin("client"),
       })
     );
+  }
+
+  if (isBlobStorageEnabled() && isVercelProduction()) {
+    throw new Error("Could not read live portfolio data. Please try again.");
   }
 
   try {
@@ -282,10 +286,6 @@ async function updatePortfolioStore(
 
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        if (attempt > 0) {
-          portfolioMemoryCache = null;
-          portfolioMemoryCacheAt = 0;
-        }
         const store = cloneStore(await loadPortfolioStore());
         await mutate(store);
         await savePortfolioStore(store);

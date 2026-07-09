@@ -215,9 +215,8 @@ export default function DesignRowManager({
     projectsRef.current = projects;
   }, [projects]);
 
-  useEffect(() => {
-    if (!busy) setProjects(initial);
-  }, [initial, busy]);
+  // Intentionally do not sync `initial` from SSR after mount — router.refresh() was
+  // re-applying stale bundled data and undoing deletes/reorders in the admin UI.
 
   function setProjectPending(id: string, pending: boolean) {
     setPendingIds((prev) => {
@@ -267,7 +266,7 @@ export default function DesignRowManager({
       throw new Error(data.error || "Failed to save design order");
     }
 
-    await refetchProjects();
+    setError("");
     router.refresh();
   }
 
@@ -334,6 +333,11 @@ export default function DesignRowManager({
       });
       const data = await parseResponseJson<{ error?: string }>(res);
       if (!res.ok) throw new Error(data.error || "Failed to delete design");
+      try {
+        await refetchProjects();
+      } catch {
+        // Delete already persisted; keep optimistic UI if refresh read lags.
+      }
       router.refresh();
     } catch (err) {
       setProjects(previous);
@@ -460,6 +464,11 @@ export default function DesignRowManager({
       });
       const data = await parseResponseJson<{ error?: string }>(res);
       if (!res.ok) throw new Error(data.error || "Failed to remove from homepage");
+      try {
+        await refetchProjects();
+      } catch {
+        // Removal already persisted; keep optimistic UI if refresh read lags.
+      }
       router.refresh();
     } catch (err) {
       setProjects(previous);

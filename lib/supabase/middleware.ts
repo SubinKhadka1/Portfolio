@@ -13,12 +13,20 @@ export async function updateSession(request: NextRequest) {
   const isApiAdmin =
     request.nextUrl.pathname.startsWith("/api/projects") &&
     request.method !== "GET";
+  const isHomepageDesignsApi =
+    request.nextUrl.pathname.startsWith("/api/homepage-designs") &&
+    request.method !== "GET";
+  const isGalleryDesignsApi =
+    request.nextUrl.pathname.startsWith("/api/gallery-designs") &&
+    request.method !== "GET";
   const isProtectedApi =
     request.nextUrl.pathname.startsWith("/api/upload") ||
     request.nextUrl.pathname.startsWith("/api/media") ||
     request.nextUrl.pathname.startsWith("/api/settings") ||
     request.nextUrl.pathname.startsWith("/api/stats") ||
     request.nextUrl.pathname.startsWith("/api/seed") ||
+    isHomepageDesignsApi ||
+    isGalleryDesignsApi ||
     (request.nextUrl.pathname.startsWith("/api/categories") &&
       request.method !== "GET");
 

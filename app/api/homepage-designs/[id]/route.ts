@@ -34,11 +34,16 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
-  const updated = await updateLocalHomepageDesign(id, body);
-  if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  try {
+    const updated = await updateLocalHomepageDesign(id, body);
+    if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  revalidateLiveSite();
-  return NextResponse.json(updated);
+    revalidateLiveSite();
+    return NextResponse.json(updated);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to update homepage design";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function DELETE(_request: NextRequest, context: RouteContext) {
@@ -49,9 +54,15 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
   }
 
   const { id } = await context.params;
-  const deleted = await deleteLocalHomepageDesign(id);
-  if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  revalidateLiveSite();
-  return NextResponse.json({ ok: true });
+  try {
+    const deleted = await deleteLocalHomepageDesign(id);
+    if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    revalidateLiveSite();
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to delete homepage design";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

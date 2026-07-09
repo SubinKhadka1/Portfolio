@@ -7,6 +7,8 @@ import { getProjects, getHomepageDesignProjects } from "@/lib/projects";
 import { getSiteSettings } from "@/lib/site-settings-read";
 import type { ProjectType } from "@/lib/types/database";
 
+export const dynamic = "force-dynamic";
+
 type PageProps = {
   searchParams: Promise<{ type?: string }>;
 };

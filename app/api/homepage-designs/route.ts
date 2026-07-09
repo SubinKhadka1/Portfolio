@@ -30,8 +30,13 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const designs = await getLocalHomepageDesigns({ admin });
-  return admin ? jsonResponse(designs) : NextResponse.json(designs);
+  try {
+    const designs = await getLocalHomepageDesigns({ admin });
+    return admin ? jsonResponse(designs) : NextResponse.json(designs);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to load homepage designs";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {

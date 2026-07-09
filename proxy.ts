@@ -9,6 +9,9 @@ export const config = {
   matcher: [
     "/admin/:path*",
     "/api/projects/:path*",
+    "/api/homepage-designs",
+    "/api/homepage-designs/:path*",
+    "/api/gallery-designs/:path*",
     "/api/upload",
     "/api/media",
     "/api/settings",

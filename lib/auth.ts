@@ -5,18 +5,17 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 export async function getAdminUser() {
   if (isSupabaseConfigured()) {
     const supabase = await tryCreateClient();
-    if (!supabase) return null;
+    if (supabase) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return null;
-
-    const adminEmail = process.env.ADMIN_EMAIL;
-    if (adminEmail && user.email !== adminEmail) return null;
-
-    return user;
+      if (user) {
+        const adminEmail = process.env.ADMIN_EMAIL;
+        if (adminEmail && user.email !== adminEmail) return null;
+        return user;
+      }
+    }
   }
 
   if (isLocalAuthConfigured() && (await isLocalAdminSession())) {
