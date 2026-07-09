@@ -219,6 +219,7 @@ export default function ProjectForm({
         const payload =
           type === "design" ? await buildDesignPayload(mediaUrl) : buildPayload(mediaUrl);
         await saveProject(payload);
+        router.refresh();
       } else if (allowMultiple) {
         if (type === "design") {
           const payloads = await Promise.all(mediaUrls.map((url) => buildDesignPayload(url)));
@@ -239,6 +240,7 @@ export default function ProjectForm({
       }
 
       router.push(`/admin/projects?type=${type}`);
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
@@ -267,6 +269,7 @@ export default function ProjectForm({
       const res = await fetch(url, { method: "DELETE", cache: "no-store" });
       if (!res.ok) throw new Error("Failed to delete");
       router.push(`/admin/projects?type=${type}`);
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete");
     } finally {

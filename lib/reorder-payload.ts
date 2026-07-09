@@ -61,6 +61,11 @@ export function buildHomepageDesignReorderItems(
   return rowDesigns.map((d, index) => ({
     id: d.id,
     sort_order: homepageSortValue(rowNum, index),
-    metadata: { ...d.metadata, marqueeRow: rowNum },
+    metadata: {
+      ...d.metadata,
+      marqueeRow: rowNum,
+      homepageSortOrder: homepageSortValue(rowNum, index),
+      showOnHomepage: true,
+    },
   }));
 }

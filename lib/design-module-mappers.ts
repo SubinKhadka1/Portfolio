@@ -133,7 +133,7 @@ export function homepageDesignToDesignItem(design: HomepageDesign): DesignItem {
       design.metadata?.aspectRatio ||
       (PORTRAIT_DESIGN_IMAGES.has(design.media_url) ? "portrait" : "square"),
     marqueeRow: design.metadata?.marqueeRow,
-    sortOrder: design.sort_order,
+    sortOrder: design.metadata?.homepageSortOrder ?? design.sort_order,
     imageWidth: design.metadata?.imageWidth,
     imageHeight: design.metadata?.imageHeight,
   };

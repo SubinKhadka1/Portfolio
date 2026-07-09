@@ -55,6 +55,8 @@ export type GalleryDesignInput = {
 /** Independent record for homepage marquee CMS (portfolio_homepage_designs). */
 export type HomepageDesignMetadata = DesignImageMetadata & {
   marqueeRow?: 1 | 2 | 3;
+  homepageSortOrder?: number;
+  showOnHomepage?: boolean;
 };
 
 export type HomepageDesign = {
