@@ -11,7 +11,7 @@ export default function SyncDeployedDataButton() {
   async function sync() {
     if (
       !confirm(
-        "Import portfolio data from the latest GitHub deploy into live storage? This overwrites live editor data with what's in your last deployment."
+        "Import gallery + homepage data from the latest GitHub deploy into live storage? This overwrites live editor data (designs, gallery sections, settings) with what's in your last deployment."
       )
     ) {
       return;

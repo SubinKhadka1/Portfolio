@@ -26,18 +26,22 @@ export async function POST() {
 
   try {
     const portfolioPath = path.join(process.cwd(), "data", "portfolio.json");
+    const categoriesPath = path.join(process.cwd(), "data", "categories.json");
     const settingsPath = path.join(process.cwd(), "data", "site-settings.json");
 
     const portfolio = JSON.parse(await fs.readFile(portfolioPath, "utf8"));
+    const categories = JSON.parse(await fs.readFile(categoriesPath, "utf8"));
     const settings = JSON.parse(await fs.readFile(settingsPath, "utf8"));
 
     await writeJsonFile("data/portfolio.json", portfolio);
+    await writeJsonFile("data/categories.json", categories);
     await writeJsonFile("data/site-settings.json", settings);
     revalidateLiveSite();
 
     return NextResponse.json({
       success: true,
-      message: "Live storage updated from the latest deployed site data.",
+      message:
+        "Live storage updated (portfolio, gallery categories, and settings). Hard-refresh /designs to see changes.",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Sync failed";

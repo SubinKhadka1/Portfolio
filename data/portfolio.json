@@ -806,7 +806,7 @@
       "title": "Burger1",
       "description": "",
       "media_url": "/designs/Burger1.jpg",
-      "category_id": "cat-food-menu",
+      "category_id": "cat-flyers",
       "sort_order": 1000,
       "published": true,
       "metadata": {
