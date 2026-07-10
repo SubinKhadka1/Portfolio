@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -12,7 +12,6 @@ import {
   Loader2,
   Pencil,
   Plus,
-  Save,
   Trash2,
   Upload,
   X,
@@ -26,14 +25,9 @@ import {
 import { buildHomepageDesignReorderItems } from "@/lib/reorder-payload";
 import { homepageDesignToProjectShape } from "@/lib/design-module-mappers";
 import { homepageSortValue } from "@/lib/design-placement";
-import {
-  createDraftHomepageDesignId,
-  isDraftHomepageDesignId,
-  projectToHomepageDesignInput,
-  uploadHomepageDesignFiles,
-} from "@/lib/homepage-design-create";
+import { uploadDesignsToHomepageRow } from "@/lib/homepage-design-create";
 import { parseResponseJson } from "@/lib/parse-response";
-import type { HomepageDesign, HomepageDesignInput, Project } from "@/lib/types/database";
+import type { HomepageDesign, Project } from "@/lib/types/database";
 
 const rowDirections = ["Scrolls left", "Scrolls right", "Scrolls left"] as const;
 const ACCEPT = "image/jpeg,image/png,image/webp,image/jpg,.jpg,.jpeg,.png,.webp,.svg";
@@ -53,37 +47,11 @@ function projectToHomepageDesign(project: Project): HomepageDesign {
   };
 }
 
-function draftProjectFromInput(id: string, input: HomepageDesignInput): Project {
-  const now = new Date().toISOString();
-  const row = clampMarqueeRow(input.metadata?.marqueeRow ?? 1);
-  return {
-    id,
-    type: "design",
-    title: input.title || "",
-    description: input.description || "",
-    media_url: input.media_url,
-    thumbnail_url: null,
-    category_id: null,
-    featured: false,
-    published: input.published ?? true,
-    sort_order: marqueeSortOrder(row, 0),
-    metadata: {
-      ...input.metadata,
-      marqueeRow: row,
-      homepageSortOrder: marqueeSortOrder(row, 0),
-      showOnHomepage: true,
-    },
-    created_at: now,
-    updated_at: now,
-    categories: null,
-  };
-}
-
 function DesignRowCard({
   project,
   rowIndex,
   rowCount,
-  disabled,
+  cardBusy,
   onDragStart,
   onDrop,
   onMoveRow,
@@ -93,7 +61,7 @@ function DesignRowCard({
   project: Project;
   rowIndex: number;
   rowCount: number;
-  disabled: boolean;
+  cardBusy: boolean;
   onDragStart: () => void;
   onDrop: () => void;
   onMoveRow: (row: number) => void;
@@ -101,17 +69,14 @@ function DesignRowCard({
   onDelete: () => void;
 }) {
   const isPortrait = project.metadata?.aspectRatio === "portrait";
-  const isDraft = isDraftHomepageDesignId(project.id);
 
   return (
     <article
-      draggable={!disabled}
+      draggable={!cardBusy}
       onDragStart={onDragStart}
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
-      className={`design-row-card shrink-0 snap-start bg-zinc-950 border rounded-lg overflow-hidden transition-colors flex flex-col ${
-        isDraft ? "border-amber-500/50" : "border-zinc-800 hover:border-purple-500/40"
-      }`}
+      className="design-row-card shrink-0 snap-start bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden hover:border-purple-500/40 transition-colors flex flex-col"
     >
       <div className="relative p-1.5 pb-0">
         <div
@@ -129,11 +94,6 @@ function DesignRowCard({
         <span className="absolute top-1 right-1 text-zinc-600 cursor-grab active:cursor-grabbing">
           <GripVertical size={12} />
         </span>
-        {isDraft && (
-          <span className="absolute top-1 left-1 text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-            New
-          </span>
-        )}
       </div>
 
       <div className="p-1.5 flex flex-col flex-1 gap-1 min-w-0">
@@ -144,7 +104,7 @@ function DesignRowCard({
             value={clampMarqueeRow(project.metadata?.marqueeRow ?? rowIndex + 1, rowCount)}
             onChange={(e) => onMoveRow(Number(e.target.value))}
             className="admin-input admin-input-compact w-full"
-            disabled={disabled}
+            disabled={cardBusy}
           >
             {Array.from({ length: rowCount }, (_, i) => (
               <option key={i + 1} value={i + 1}>
@@ -159,7 +119,7 @@ function DesignRowCard({
             type="button"
             onClick={onTogglePublished}
             title="Toggle published"
-            disabled={disabled}
+            disabled={cardBusy}
             className={`p-1 rounded-md transition-colors ${
               project.published
                 ? "text-green-400 bg-green-400/10"
@@ -169,19 +129,17 @@ function DesignRowCard({
             {project.published ? <Eye size={12} /> : <EyeOff size={12} />}
           </button>
           <div className="flex gap-0.5">
-            {!isDraft && (
-              <Link
-                href={`/admin/projects/${project.id}`}
-                className="p-1 rounded-md text-zinc-400 hover:text-purple-400 hover:bg-zinc-800 transition-colors"
-                title="Edit details"
-              >
-                <Pencil size={12} />
-              </Link>
-            )}
+            <Link
+              href={`/admin/projects/${project.id}`}
+              className="p-1 rounded-md text-zinc-400 hover:text-purple-400 hover:bg-zinc-800 transition-colors"
+              title="Edit details"
+            >
+              <Pencil size={12} />
+            </Link>
             <button
               type="button"
               onClick={onDelete}
-              disabled={disabled}
+              disabled={cardBusy}
               className="p-1 rounded-md text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition-colors"
               title="Remove from homepage"
             >
@@ -203,30 +161,30 @@ export default function DesignRowManager({
 }) {
   const router = useRouter();
   const rowCount = clampMarqueeRows(portfolioRows);
-  const snapshotRef = useRef(JSON.stringify(initial));
+  const projectsRef = useRef(initial);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [projects, setProjects] = useState(initial);
   const [drag, setDrag] = useState<{ row: number; index: number } | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [showUpload, setShowUpload] = useState(false);
   const [uploadRow, setUploadRow] = useState<1 | 2 | 3>(1);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
 
-  const isDirty = useMemo(
-    () => JSON.stringify(projects) !== snapshotRef.current,
-    [projects]
-  );
+  useEffect(() => {
+    projectsRef.current = projects;
+  }, [projects]);
 
   const rowGroups = useMemo(
     () => groupProjectsByMarqueeRow(projects, rowCount),
     [projects, rowCount]
   );
 
-  const flash = useCallback((msg: string, isError = false) => {
+  function flash(msg: string, isError = false) {
     if (isError) {
       setError(msg);
       setMessage("");
@@ -237,18 +195,17 @@ export default function DesignRowManager({
     window.setTimeout(() => {
       setMessage("");
       setError("");
-    }, 3500);
-  }, []);
+    }, 4000);
+  }
 
-  useEffect(() => {
-    if (!isDirty) return;
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [isDirty]);
+  function setProjectPending(id: string, pending: boolean) {
+    setPendingIds((prev) => {
+      const next = new Set(prev);
+      if (pending) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
 
   async function refetchProjects() {
     const res = await fetch("/api/homepage-designs?admin=true", { cache: "no-store" });
@@ -258,7 +215,35 @@ export default function DesignRowManager({
         !Array.isArray(data) && data.error ? data.error : "Failed to refresh designs"
       );
     }
-    return data.map(homepageDesignToProjectShape);
+    const shaped = data.map(homepageDesignToProjectShape);
+    setProjects(shaped);
+    return shaped;
+  }
+
+  async function persistLayout(updates: { rowProjects: Project[]; row: number }[]) {
+    const items = updates.flatMap(({ rowProjects, row }) =>
+      buildHomepageDesignReorderItems(
+        rowProjects.map(projectToHomepageDesign),
+        row
+      )
+    );
+
+    const res = await fetch("/api/homepage-designs/reorder", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items }),
+      cache: "no-store",
+    });
+    const data = await parseResponseJson<{ error?: string }>(res);
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to save design order");
+    }
+
+    router.refresh();
+  }
+
+  async function persistRowOrder(row: number, rowProjects: Project[]) {
+    await persistLayout([{ rowProjects, row }]);
   }
 
   function applyRowState(updates: Project[]) {
@@ -279,105 +264,207 @@ export default function DesignRowManager({
     }));
   }
 
-  function handleDrop(targetRow: number, targetIndex: number) {
-    if (!drag || saving || uploading) return;
+  async function handleDrop(targetRow: number, targetIndex: number) {
+    if (!drag || busy || uploading) return;
     if (drag.row === targetRow && drag.index === targetIndex) {
       setDrag(null);
       return;
     }
 
-    const sourceRow = drag.row;
-    const sourceProjects = [...rowGroups[sourceRow]];
-    const [moved] = sourceProjects.splice(drag.index, 1);
-    if (!moved) {
+    const snapshot = projectsRef.current;
+    setBusy(true);
+    setError("");
+
+    try {
+      const sourceRow = drag.row;
+      const sourceProjects = [...rowGroups[sourceRow]];
+      const [moved] = sourceProjects.splice(drag.index, 1);
+      if (!moved) return;
+
+      if (sourceRow === targetRow) {
+        sourceProjects.splice(targetIndex, 0, moved);
+        const normalized = normalizeRowProjects(sourceProjects, sourceRow + 1);
+        applyRowState(normalized);
+        await persistRowOrder(sourceRow + 1, normalized);
+        flash("Order saved.");
+      } else {
+        const targetProjects = [...rowGroups[targetRow]];
+        const targetRowNum = targetRow + 1;
+        const updatedMoved: Project = {
+          ...moved,
+          metadata: { ...moved.metadata, marqueeRow: targetRowNum as 1 | 2 | 3 },
+        };
+        targetProjects.splice(targetIndex, 0, updatedMoved);
+
+        const normalizedSource = normalizeRowProjects(sourceProjects, sourceRow + 1);
+        const normalizedTarget = normalizeRowProjects(targetProjects, targetRowNum);
+        applyRowState([...normalizedSource, ...normalizedTarget]);
+        await persistLayout([
+          { rowProjects: normalizedSource, row: sourceRow + 1 },
+          { rowProjects: normalizedTarget, row: targetRowNum },
+        ]);
+        flash("Design moved.");
+      }
+    } catch (err) {
+      flash(err instanceof Error ? err.message : "Failed to save", true);
+      try {
+        await refetchProjects();
+      } catch {
+        setProjects(snapshot);
+      }
+    } finally {
+      setBusy(false);
       setDrag(null);
-      return;
     }
-
-    if (sourceRow === targetRow) {
-      sourceProjects.splice(targetIndex, 0, moved);
-      applyRowState(normalizeRowProjects(sourceProjects, sourceRow + 1));
-    } else {
-      const targetProjects = [...rowGroups[targetRow]];
-      const targetRowNum = targetRow + 1;
-      const updatedMoved: Project = {
-        ...moved,
-        metadata: { ...moved.metadata, marqueeRow: targetRowNum as 1 | 2 | 3 },
-      };
-      targetProjects.splice(targetIndex, 0, updatedMoved);
-      applyRowState([
-        ...normalizeRowProjects(sourceProjects, sourceRow + 1),
-        ...normalizeRowProjects(targetProjects, targetRowNum),
-      ]);
-    }
-
-    setDrag(null);
   }
 
-  function moveToRow(project: Project, targetRow: number) {
-    if (saving || uploading) return;
+  async function moveToRow(project: Project, targetRow: number) {
+    if (busy || uploading) return;
     const currentRow = clampMarqueeRow(project.metadata?.marqueeRow ?? 1, rowCount);
     if (currentRow === targetRow) return;
 
-    const sourceIndex = currentRow - 1;
-    const targetIndex = targetRow - 1;
-    const sourceProjects = rowGroups[sourceIndex].filter((p) => p.id !== project.id);
-    const targetProjects = [...rowGroups[targetIndex], project];
+    const snapshot = projectsRef.current;
+    setBusy(true);
+    setError("");
 
-    applyRowState([
-      ...normalizeRowProjects(sourceProjects, currentRow),
-      ...normalizeRowProjects(targetProjects, targetRow),
-    ]);
+    try {
+      const sourceIndex = currentRow - 1;
+      const targetIndex = targetRow - 1;
+      const sourceProjects = rowGroups[sourceIndex].filter((p) => p.id !== project.id);
+      const targetProjects = [...rowGroups[targetIndex], project];
+
+      const normalizedSource = normalizeRowProjects(sourceProjects, currentRow);
+      const normalizedTarget = normalizeRowProjects(targetProjects, targetRow);
+      applyRowState([...normalizedSource, ...normalizedTarget]);
+
+      await persistLayout([
+        { rowProjects: normalizedSource, row: currentRow },
+        { rowProjects: normalizedTarget, row: targetRow },
+      ]);
+      flash("Design moved.");
+    } catch (err) {
+      flash(err instanceof Error ? err.message : "Failed to save", true);
+      try {
+        await refetchProjects();
+      } catch {
+        setProjects(snapshot);
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
-  function handleDelete(id: string) {
+  async function togglePublished(id: string, published: boolean) {
+    const previous = projectsRef.current.find((p) => p.id === id);
+    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, published } : p)));
+    setProjectPending(id, true);
+    try {
+      const res = await fetch(`/api/homepage-designs/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ published }),
+        cache: "no-store",
+      });
+      const data = await parseResponseJson<HomepageDesign & { error?: string }>(res);
+      if (!res.ok) throw new Error(data.error || "Failed to update design");
+      const shaped = homepageDesignToProjectShape(data);
+      setProjects((prev) => prev.map((p) => (p.id === id ? shaped : p)));
+      router.refresh();
+    } catch (err) {
+      if (previous) {
+        setProjects((prev) => prev.map((p) => (p.id === id ? previous : p)));
+      }
+      flash(err instanceof Error ? err.message : "Failed to update design", true);
+    } finally {
+      setProjectPending(id, false);
+    }
+  }
+
+  async function handleDelete(id: string) {
     if (
       !confirm(
-        "Remove this design from the homepage marquee? Click Save Changes to apply. The /designs gallery is not affected."
+        "Remove this design from the homepage marquee? The /designs gallery will not be affected."
       )
     ) {
       return;
     }
+
+    const snapshot = projectsRef.current;
     setProjects((prev) => prev.filter((p) => p.id !== id));
-  }
+    setProjectPending(id, true);
+    setError("");
 
-  function togglePublished(id: string, published: boolean) {
-    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, published } : p)));
-  }
-
-  function cancelChanges() {
-    setProjects(JSON.parse(snapshotRef.current) as Project[]);
-    setShowUpload(false);
-    flash("Changes discarded.");
+    try {
+      const res = await fetch(`/api/homepage-designs/${id}`, {
+        method: "DELETE",
+        cache: "no-store",
+      });
+      const data = await parseResponseJson<{ error?: string }>(res);
+      if (!res.ok) throw new Error(data.error || "Failed to delete design");
+      try {
+        await refetchProjects();
+      } catch {
+        // Delete succeeded; keep optimistic UI if refresh lags.
+      }
+      router.refresh();
+      flash("Design removed from homepage.");
+    } catch (err) {
+      setProjects(snapshot);
+      flash(err instanceof Error ? err.message : "Failed to delete design", true);
+    } finally {
+      setProjectPending(id, false);
+    }
   }
 
   async function runUpload(files: File[]) {
-    const allowed = files.filter((file) => file.type.startsWith("image/") || /\.(jpe?g|png|webp|svg)$/i.test(file.name));
+    const allowed = files.filter(
+      (file) => file.type.startsWith("image/") || /\.(jpe?g|png|webp|svg)$/i.test(file.name)
+    );
     if (!allowed.length) {
       flash("Please choose PNG, JPG, WebP, or SVG images.", true);
       return;
     }
 
+    const rowIndex = uploadRow - 1;
+    const designsInRow = rowGroups[rowIndex]?.length ?? 0;
+
     setUploading(true);
     setUploadProgress(`Uploading ${allowed.length} file${allowed.length === 1 ? "" : "s"}…`);
+    setError("");
+
     try {
-      const { drafts, failed } = await uploadHomepageDesignFiles(allowed, uploadRow, setUploadProgress);
-      if (drafts.length) {
-        const targetIndex = uploadRow - 1;
-        const targetProjects = [...rowGroups[targetIndex]];
-        const newProjects = drafts.map((draft) =>
-          draftProjectFromInput(createDraftHomepageDesignId(), draft)
+      const result = await uploadDesignsToHomepageRow({
+        files: allowed,
+        row: uploadRow,
+        designsInRow,
+        onProgress: setUploadProgress,
+      });
+
+      if (result.created.length) {
+        const createdProjects = result.created.map(homepageDesignToProjectShape);
+        setProjects((prev) => {
+          const ids = new Set(createdProjects.map((p) => p.id));
+          return [...prev.filter((p) => !ids.has(p.id)), ...createdProjects];
+        });
+        try {
+          await refetchProjects();
+        } catch {
+          // Records were saved; keep created cards visible.
+        }
+        router.refresh();
+        flash(
+          `${result.created.length} design${result.created.length === 1 ? "" : "s"} added to row ${uploadRow}.`
         );
-        const normalized = normalizeRowProjects([...targetProjects, ...newProjects], uploadRow);
-        const normalizedIds = new Set(normalized.map((p) => p.id));
-        setProjects((prev) => [
-          ...prev.filter((p) => !normalizedIds.has(p.id)),
-          ...normalized,
-        ]);
-        flash(`${drafts.length} design${drafts.length === 1 ? "" : "s"} added. Click Save Changes to publish.`);
         setShowUpload(false);
       }
-      if (failed.length) flash(`${failed.length} upload${failed.length === 1 ? "" : "s"} failed.`, true);
+
+      if (result.failed.length) {
+        const detail = result.failed[0]?.error;
+        flash(
+          `${result.failed.length} file${result.failed.length === 1 ? "" : "s"} failed${detail ? `: ${detail}` : ""}`,
+          true
+        );
+      }
     } catch (err) {
       flash(err instanceof Error ? err.message : "Upload failed", true);
     } finally {
@@ -387,170 +474,36 @@ export default function DesignRowManager({
     }
   }
 
-  async function saveAll() {
-    if (!isDirty || saving) return;
-
-    const savedSnapshot = JSON.parse(snapshotRef.current) as Project[];
-    const savedById = new Map(savedSnapshot.map((p) => [p.id, p]));
-    const currentById = new Map(projects.map((p) => [p.id, p]));
-
-    setSaving(true);
-    setError("");
-
-    try {
-      const toDelete = savedSnapshot
-        .map((p) => p.id)
-        .filter((id) => !currentById.has(id) && !isDraftHomepageDesignId(id));
-
-      for (const id of toDelete) {
-        const res = await fetch(`/api/homepage-designs/${id}`, {
-          method: "DELETE",
-          cache: "no-store",
-        });
-        const data = await parseResponseJson<{ error?: string }>(res);
-        if (!res.ok) throw new Error(data.error || "Failed to delete design");
-      }
-
-      const draftProjects = projects.filter((p) => isDraftHomepageDesignId(p.id));
-      const idRemap = new Map<string, string>();
-
-      if (draftProjects.length) {
-        const payloads: HomepageDesignInput[] = draftProjects.map((p) =>
-          projectToHomepageDesignInput(p)
-        );
-        const res = await fetch("/api/homepage-designs/batch", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: payloads }),
-          cache: "no-store",
-        });
-        const data = await parseResponseJson<HomepageDesign[] | { error?: string }>(res);
-        if (!res.ok || !Array.isArray(data)) {
-          throw new Error(!Array.isArray(data) && data.error ? data.error : "Failed to add designs");
-        }
-
-        draftProjects.forEach((draft) => {
-          const created = data.find(
-            (item) =>
-              item.media_url === draft.media_url &&
-              clampMarqueeRow(item.metadata?.marqueeRow ?? 1) ===
-                clampMarqueeRow(draft.metadata?.marqueeRow ?? 1)
-          );
-          if (created) idRemap.set(draft.id, created.id);
-        });
-      }
-
-      let workingProjects = projects.map((p) => {
-        const remappedId = idRemap.get(p.id);
-        if (!remappedId) return p;
-        return { ...p, id: remappedId };
-      });
-
-      const publishUpdates = workingProjects.filter((p) => {
-        const saved = savedById.get(p.id);
-        return saved && saved.published !== p.published;
-      });
-
-      for (const project of publishUpdates) {
-        const res = await fetch(`/api/homepage-designs/${project.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ published: project.published }),
-          cache: "no-store",
-        });
-        const data = await parseResponseJson<HomepageDesign & { error?: string }>(res);
-        if (!res.ok) throw new Error(data.error || "Failed to update design");
-        workingProjects = workingProjects.map((p) =>
-          p.id === project.id ? homepageDesignToProjectShape(data) : p
-        );
-      }
-
-      const items = Array.from({ length: rowCount }, (_, rowIndex) => {
-        const rowNum = rowIndex + 1;
-        const rowProjects = groupProjectsByMarqueeRow(workingProjects, rowCount)[rowIndex] || [];
-        return buildHomepageDesignReorderItems(
-          rowProjects.map((p) => projectToHomepageDesign(p)),
-          rowNum
-        );
-      }).flat();
-
-      if (items.length) {
-        const res = await fetch("/api/homepage-designs/reorder", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items }),
-          cache: "no-store",
-        });
-        const data = await parseResponseJson<{ error?: string }>(res);
-        if (!res.ok) throw new Error(data.error || "Failed to save design order");
-      }
-
-      let fresh: Project[];
-      try {
-        fresh = await refetchProjects();
-      } catch {
-        fresh = workingProjects;
-      }
-
-      setProjects(fresh);
-      snapshotRef.current = JSON.stringify(fresh);
-      router.refresh();
-      flash("Changes saved. Homepage updated.");
-    } catch (err) {
-      flash(err instanceof Error ? err.message : "Failed to save changes", true);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const interactionDisabled = saving || uploading;
+  const interactionDisabled = busy || uploading;
 
   return (
     <div className="space-y-4 sm:space-y-5">
       <div className="sticky top-0 z-20 -mx-1 px-1 py-2 bg-black/90 backdrop-blur border-b border-zinc-800/80">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-white font-semibold text-sm sm:text-base">Homepage marquee editor</h2>
+            <h2 className="text-white font-semibold text-sm sm:text-base">Homepage marquee</h2>
             <p className="text-zinc-500 text-xs mt-0.5">
-              Drag to reorder · move between rows · then{" "}
-              <span className="text-zinc-300">Save Changes</span> to go live
-              {isDirty ? (
-                <span className="text-amber-400"> · unsaved changes</span>
-              ) : (
-                <span className="text-green-400/90"> · all saved</span>
-              )}
+              Drag to reorder · changes save instantly · same flow as Design Gallery
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setShowUpload(true)}
-              disabled={interactionDisabled}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 transition-colors disabled:opacity-50"
-            >
-              <Plus size={15} />
-              Add designs
-            </button>
-            <button
-              type="button"
-              onClick={cancelChanges}
-              disabled={!isDirty || interactionDisabled}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800 border border-zinc-700 transition-colors disabled:opacity-40"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => void saveAll()}
-              disabled={!isDirty || interactionDisabled}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-purple-600 hover:bg-purple-500 text-white transition-colors disabled:opacity-40"
-            >
-              {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-              Save changes
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowUpload((v) => !v)}
+            disabled={interactionDisabled}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium bg-purple-600 hover:bg-purple-500 text-white transition-colors disabled:opacity-50 shrink-0"
+          >
+            <Plus size={15} />
+            Add designs
+          </button>
         </div>
       </div>
+
+      {(busy || uploading) && (
+        <p className="text-zinc-400 text-sm bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 flex items-center gap-2">
+          <Loader2 size={14} className="animate-spin shrink-0" />
+          {uploading ? uploadProgress || "Uploading…" : "Saving changes…"}
+        </p>
+      )}
 
       {(message || error) && (
         <p
@@ -567,7 +520,7 @@ export default function DesignRowManager({
       {showUpload && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-white font-medium text-sm">Add designs to homepage</p>
+            <p className="text-white font-medium text-sm">Add designs to homepage row</p>
             <button
               type="button"
               onClick={() => setShowUpload(false)}
@@ -618,24 +571,21 @@ export default function DesignRowManager({
             ) : (
               <>
                 <Upload size={22} className="text-purple-400" />
-                <span className="text-sm font-medium">Click to upload or drop images here</span>
-                <span className="text-xs text-zinc-500">PNG, JPG, WebP, SVG · multiple files OK</span>
+                <span className="text-sm font-medium">Click to upload images</span>
+                <span className="text-xs text-zinc-500">PNG, JPG, WebP, SVG · saves to live site immediately</span>
               </>
             )}
           </button>
-          <p className="text-zinc-500 text-xs">
-            Images upload now, but won&apos;t appear on the live homepage until you click{" "}
-            <strong className="text-zinc-300">Save changes</strong>.
-          </p>
         </div>
       )}
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl px-3 sm:px-4 py-3 text-xs sm:text-sm text-zinc-400 leading-relaxed">
-        This controls only the <strong className="text-zinc-200">homepage marquee</strong>, not the{" "}
+        Controls the <strong className="text-zinc-200">homepage marquee only</strong> — not the{" "}
         <Link href="/designs" target="_blank" className="text-purple-400 hover:text-purple-300">
           /designs
         </Link>{" "}
-        gallery. Drag cards to reorder or swap rows, then save. Gallery edits are in{" "}
+        gallery. Drag to reorder, use the row dropdown to move designs, or upload new flyers. Gallery
+        edits are in{" "}
         <Link href="/admin/categories" className="text-purple-400 hover:text-purple-300">
           Design Gallery
         </Link>
@@ -663,11 +613,6 @@ export default function DesignRowManager({
                   <span>
                     {rowProjects.length} design{rowProjects.length === 1 ? "" : "s"}
                   </span>
-                  <span className="text-zinc-700 hidden md:inline">·</span>
-                  <span className="hidden md:inline-flex items-center gap-1 text-zinc-600">
-                    {rowIndex % 2 === 0 ? <ArrowLeft size={12} /> : <ArrowRight size={12} />}
-                    Homepage direction
-                  </span>
                 </p>
               </div>
               <button
@@ -680,8 +625,7 @@ export default function DesignRowManager({
                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-purple-600 hover:bg-purple-700 text-white transition-colors shrink-0 disabled:opacity-50"
               >
                 <Plus size={14} />
-                <span className="hidden sm:inline">Add to row {rowNum}</span>
-                <span className="sm:hidden">Add</span>
+                Add to row {rowNum}
               </button>
             </div>
 
@@ -692,7 +636,7 @@ export default function DesignRowManager({
                 onDrop={() => handleDrop(rowIndex, 0)}
               >
                 <p className="text-zinc-500 text-sm mb-4">
-                  No designs in row {rowNum} yet. Add images or drag a design here from another row.
+                  No designs in row {rowNum}. Upload images or drag a design here.
                 </p>
                 <button
                   type="button"
@@ -704,7 +648,7 @@ export default function DesignRowManager({
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white transition-colors disabled:opacity-50"
                 >
                   <Plus size={18} />
-                  Add design to row {rowNum}
+                  Add to row {rowNum}
                 </button>
               </div>
             ) : (
@@ -720,7 +664,7 @@ export default function DesignRowManager({
                       project={project}
                       rowIndex={rowIndex}
                       rowCount={rowCount}
-                      disabled={interactionDisabled}
+                      cardBusy={pendingIds.has(project.id) || interactionDisabled}
                       onDragStart={() => setDrag({ row: rowIndex, index })}
                       onDrop={() => handleDrop(rowIndex, index)}
                       onMoveRow={(row) => moveToRow(project, row)}

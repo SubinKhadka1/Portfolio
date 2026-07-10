@@ -6,7 +6,11 @@ export async function parseResponseJson<T = Record<string, unknown>>(
   if (!text.trim()) {
     if (!res.ok) {
       throw new Error(
-        `Request failed (${res.status}). Try again after restarting the dev server, or use a smaller JPG/PNG.`
+        res.status === 401
+          ? "Please log in to the admin panel again."
+          : res.status === 500
+            ? `Server error (${res.status}). If uploading, try a smaller JPG/PNG or check Vercel Blob storage limits.`
+            : `Request failed (${res.status}). Please refresh and try again.`
       );
     }
     return {} as T;

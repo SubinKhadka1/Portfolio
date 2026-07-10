@@ -40,11 +40,20 @@ export async function saveMediaFile(
   const filename = buildUniqueFilename(type, file.name);
   const storagePath = `${PUBLIC_DIRS[type]}/${filename}`;
 
-  const blob = await put(storagePath, file, {
-    access: "public",
-    addRandomSuffix: false,
-    contentType: file.type || undefined,
-  });
-
-  return { url: blob.url, filename };
+  try {
+    const blob = await put(storagePath, file, {
+      access: "public",
+      addRandomSuffix: false,
+      contentType: file.type || undefined,
+    });
+    return { url: blob.url, filename };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Upload failed";
+    if (/suspended|quota|usage limit|rate limit/i.test(message)) {
+      throw new Error(
+        "Vercel Blob storage is unavailable (usage limit reached). Upgrade Vercel or wait for usage to reset."
+      );
+    }
+    throw new Error(message);
+  }
 }
