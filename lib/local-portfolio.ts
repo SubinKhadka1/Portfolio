@@ -4,7 +4,6 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { isNextBuildPhase } from "@/lib/is-build-time";
 import { readJsonFile, writeJsonFile } from "@/lib/json-store";
-import { isBlobStorageEnabled, isVercelProduction } from "@/lib/storage-mode";
 import { staticProjectsForAdmin } from "@/lib/seed";
 import { marqueeSortOrder, clampMarqueeRow } from "@/lib/marquee";
 import {
@@ -241,10 +240,6 @@ async function loadPortfolioStore(): Promise<PortfolioStore> {
         client: staticProjectsForAdmin("client"),
       })
     );
-  }
-
-  if (isBlobStorageEnabled() && isVercelProduction()) {
-    throw new Error("Could not read live portfolio data. Please try again.");
   }
 
   try {

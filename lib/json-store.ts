@@ -2,7 +2,6 @@ import { get, head, put } from "@vercel/blob";
 import { promises as fs } from "fs";
 import path from "path";
 import { markBlobWritesBlocked, isBlobWritesBlocked, getBlobBlockReason } from "@/lib/blob-state";
-import { isNextBuildPhase } from "@/lib/is-build-time";
 import { readGithubJson, writeGithubJson } from "@/lib/github-json-store";
 import { readSupabaseJson, supabaseJsonExists, writeSupabaseJson } from "@/lib/supabase-json-store";
 import {
@@ -10,7 +9,7 @@ import {
   getJsonWriteBackends,
   type JsonStorageBackend,
 } from "@/lib/storage-backends";
-import { isBlobStorageEnabled, isVercelProduction } from "@/lib/storage-mode";
+import { isBlobStorageEnabled } from "@/lib/storage-mode";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -84,7 +83,7 @@ async function readBlobJson<T>(relativePath: string, attempt: number): Promise<T
 }
 
 export async function blobJsonExists(relativePath: string): Promise<boolean> {
-  if (!isBlobStorageEnabled() || isBlobWritesBlocked()) return false;
+  if (!isBlobStorageEnabled()) return false;
   try {
     await head(relativePath);
     return true;
@@ -152,15 +151,11 @@ export async function readJsonFile<T>(relativePath: string): Promise<T | null> {
   const backends = getJsonReadBackends(remoteExists);
 
   for (const backend of backends) {
-    if (backend === "blob" && isBlobWritesBlocked()) continue;
     const data = await readFromBackend<T>(backend, relativePath);
     if (data !== null) return data;
   }
 
-  if (remoteExists && isVercelProduction() && !isNextBuildPhase()) {
-    return null;
-  }
-
+  // Last resort: bundled data/*.json from the deployment (read-only fallback).
   return readDiskJson<T>(relativePath);
 }
 
