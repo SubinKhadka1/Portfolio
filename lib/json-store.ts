@@ -1,7 +1,15 @@
 import { get, head, put } from "@vercel/blob";
 import { promises as fs } from "fs";
 import path from "path";
+import { markBlobWritesBlocked, isBlobWritesBlocked, getBlobBlockReason } from "@/lib/blob-state";
 import { isNextBuildPhase } from "@/lib/is-build-time";
+import { readGithubJson, writeGithubJson } from "@/lib/github-json-store";
+import { readSupabaseJson, supabaseJsonExists, writeSupabaseJson } from "@/lib/supabase-json-store";
+import {
+  getJsonReadBackends,
+  getJsonWriteBackends,
+  type JsonStorageBackend,
+} from "@/lib/storage-backends";
 import { isBlobStorageEnabled, isVercelProduction } from "@/lib/storage-mode";
 
 function sleep(ms: number) {
@@ -16,10 +24,15 @@ function blobWriteErrorMessage(err: unknown): string {
     name === "BlobStoreSuspendedError" ||
     /suspended|quota|usage limit|rate limit/i.test(message)
   ) {
-    return "Vercel Blob storage is unavailable (usage limit or suspended store). Upgrade your Vercel plan or wait for usage to reset, then try again.";
+    return "Vercel Blob storage is suspended or over quota.";
   }
 
   return message || "Failed to save to Vercel Blob";
+}
+
+function isBlobSuspensionError(err: unknown) {
+  const message = blobWriteErrorMessage(err);
+  return /suspended|quota|usage limit/i.test(message);
 }
 
 async function readDiskJson<T>(relativePath: string): Promise<T | null> {
@@ -71,7 +84,7 @@ async function readBlobJson<T>(relativePath: string, attempt: number): Promise<T
 }
 
 export async function blobJsonExists(relativePath: string): Promise<boolean> {
-  if (!isBlobStorageEnabled()) return false;
+  if (!isBlobStorageEnabled() || isBlobWritesBlocked()) return false;
   try {
     await head(relativePath);
     return true;
@@ -80,35 +93,31 @@ export async function blobJsonExists(relativePath: string): Promise<boolean> {
   }
 }
 
-export async function readJsonFile<T>(relativePath: string): Promise<T | null> {
-  if (isBlobStorageEnabled()) {
-    const blobExists = await blobJsonExists(relativePath);
-
-    for (let attempt = 0; attempt < 8; attempt++) {
-      try {
+async function readFromBackend<T>(backend: JsonStorageBackend, relativePath: string): Promise<T | null> {
+  switch (backend) {
+    case "blob": {
+      for (let attempt = 0; attempt < 4; attempt++) {
         const data = await readBlobJson<T>(relativePath, attempt);
         if (data !== null) return data;
-      } catch {
-        // retry
+        if (attempt < 3) await sleep(150 * (attempt + 1));
       }
-      if (attempt < 7) await sleep(200 * (attempt + 1));
-    }
-
-    // Never serve the Git bundle when live Blob already has this file — that would
-    // undo admin edits (deletes, reorders, new uploads) with stale deploy data.
-    if (blobExists && isVercelProduction() && !isNextBuildPhase()) {
       return null;
     }
+    case "supabase":
+      return readSupabaseJson<T>(relativePath);
+    case "github":
+      return readGithubJson<T>(relativePath);
+    case "disk":
+      return readDiskJson<T>(relativePath);
+    default:
+      return null;
   }
-
-  return readDiskJson<T>(relativePath);
 }
 
-export async function writeJsonFile<T>(relativePath: string, data: T): Promise<void> {
-  const body = JSON.stringify(data, null, 2);
-
-  if (isBlobStorageEnabled()) {
-    try {
+async function writeToBackend<T>(backend: JsonStorageBackend, relativePath: string, data: T) {
+  switch (backend) {
+    case "blob": {
+      const body = JSON.stringify(data, null, 2);
       await put(relativePath, body, {
         access: "public",
         addRandomSuffix: false,
@@ -116,19 +125,115 @@ export async function writeJsonFile<T>(relativePath: string, data: T): Promise<v
         contentType: "application/json",
         cacheControlMaxAge: 0,
       });
-    } catch (err) {
-      throw new Error(blobWriteErrorMessage(err));
+      return;
     }
-    return;
+    case "supabase":
+      await writeSupabaseJson(relativePath, data);
+      return;
+    case "github":
+      await writeGithubJson(relativePath, data);
+      return;
+    case "disk": {
+      const fullPath = path.join(process.cwd(), relativePath);
+      await fs.mkdir(path.dirname(fullPath), { recursive: true });
+      await fs.writeFile(fullPath, JSON.stringify(data, null, 2), "utf8");
+      return;
+    }
+    default:
+      throw new Error(`Unknown storage backend: ${backend}`);
+  }
+}
+
+export async function readJsonFile<T>(relativePath: string): Promise<T | null> {
+  const blobExists = await blobJsonExists(relativePath);
+  const supabaseExists = await supabaseJsonExists(relativePath);
+  const remoteExists = blobExists || supabaseExists;
+
+  const backends = getJsonReadBackends(remoteExists);
+
+  for (const backend of backends) {
+    if (backend === "blob" && isBlobWritesBlocked()) continue;
+    const data = await readFromBackend<T>(backend, relativePath);
+    if (data !== null) return data;
   }
 
-  if (isVercelProduction()) {
+  if (remoteExists && isVercelProduction() && !isNextBuildPhase()) {
+    return null;
+  }
+
+  return readDiskJson<T>(relativePath);
+}
+
+export async function writeJsonFile<T>(relativePath: string, data: T): Promise<void> {
+  const backends = getJsonWriteBackends();
+  if (backends.length === 0) {
     throw new Error(
-      "Live admin edits need Vercel Blob storage. Open Vercel → Storage → Create Blob store → Redeploy."
+      "No live storage is configured. Add Supabase (SUPABASE_SERVICE_ROLE_KEY) or GitHub (GITHUB_TOKEN) on Vercel, or restore Vercel Blob."
     );
   }
 
-  const fullPath = path.join(process.cwd(), relativePath);
-  await fs.mkdir(path.dirname(fullPath), { recursive: true });
-  await fs.writeFile(fullPath, body, "utf8");
+  const errors: string[] = [];
+
+  for (const backend of backends) {
+    if (backend === "blob" && isBlobWritesBlocked()) continue;
+
+    try {
+      await writeToBackend(backend, relativePath, data);
+      return;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Save failed";
+      errors.push(`${backend}: ${message}`);
+      if (backend === "blob" && isBlobSuspensionError(err)) {
+        markBlobWritesBlocked(message);
+      }
+    }
+  }
+
+  throw new Error(
+    errors.length
+      ? `Could not save changes. ${errors.join(" · ")}`
+      : "Could not save changes. Configure Supabase or GitHub storage on Vercel."
+  );
+}
+
+/** Probe which remote backend can serve portfolio data right now. */
+export async function probeJsonStorageHealth() {
+  const path = "data/portfolio.json";
+  const blobEnabled = isBlobStorageEnabled();
+  let blobOk = false;
+  let blobError = getBlobBlockReason();
+
+  if (blobEnabled && !isBlobWritesBlocked()) {
+    try {
+      await head(path);
+      blobOk = true;
+    } catch (err) {
+      blobError = blobWriteErrorMessage(err);
+      if (isBlobSuspensionError(err)) markBlobWritesBlocked(blobError);
+    }
+  }
+
+  const supabaseOk = Boolean(await readSupabaseJson(path));
+  const githubOk = Boolean(await readGithubJson(path));
+
+  let activeBackend: JsonStorageBackend | "none" = "none";
+  if (blobOk && !isBlobWritesBlocked()) activeBackend = "blob";
+  else if (supabaseOk) activeBackend = "supabase";
+  else if (githubOk) activeBackend = "github";
+
+  const canWrite =
+    (blobEnabled && !isBlobWritesBlocked()) ||
+    getJsonWriteBackends().some((b) => b !== "blob" && b !== "disk");
+
+  return {
+    blobEnabled,
+    blobOk,
+    blobSuspended: isBlobWritesBlocked() || /suspended/i.test(blobError),
+    blobError,
+    supabaseOk,
+    githubOk,
+    activeBackend,
+    canWrite,
+    writeBackends: getJsonWriteBackends().filter((b) => b !== "disk"),
+  };
 }

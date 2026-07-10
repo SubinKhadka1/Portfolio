@@ -94,6 +94,18 @@ CREATE POLICY "admin_delete_storage" ON storage.objects
     bucket_id = 'portfolio-media' AND auth.role() = 'authenticated'
   );
 
+-- Site JSON (portfolio.json, categories.json, settings) when Blob is unavailable
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('site-data', 'site-data', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "public_read_site_data" ON storage.objects
+  FOR SELECT USING (bucket_id = 'site-data');
+
+CREATE POLICY "service_site_data_all" ON storage.objects
+  FOR ALL USING (bucket_id = 'site-data')
+  WITH CHECK (bucket_id = 'site-data');
+
 -- Default categories
 INSERT INTO categories (name, slug, project_type) VALUES
   ('Social Media', 'social-media', 'design'),

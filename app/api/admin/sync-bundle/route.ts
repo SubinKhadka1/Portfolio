@@ -5,6 +5,7 @@ import { requireAdminUser } from "@/lib/auth";
 import { writeJsonFile } from "@/lib/json-store";
 import { revalidateLiveSite } from "@/lib/revalidate-site";
 import { isBlobStorageEnabled } from "@/lib/storage-mode";
+import { isGithubJsonEnabled, isSupabaseJsonEnabled } from "@/lib/storage-backends";
 
 /** Copy the deployed data/*.json files (from GitHub) into Vercel Blob live storage. */
 export async function POST() {
@@ -14,11 +15,11 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!isBlobStorageEnabled()) {
+  if (!isBlobStorageEnabled() && !isSupabaseJsonEnabled() && !isGithubJsonEnabled()) {
     return NextResponse.json(
       {
         error:
-          "Vercel Blob is required. Create a Blob store in Vercel → Storage, connect it, then redeploy.",
+          "Remote storage is required. Connect Vercel Blob, Supabase, or GITHUB_TOKEN on Vercel.",
       },
       { status: 503 }
     );

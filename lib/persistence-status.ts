@@ -1,8 +1,9 @@
 import { isBlobStorageEnabled, isVercelProduction } from "@/lib/storage-mode";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isGithubJsonEnabled, isSupabaseJsonEnabled } from "@/lib/storage-backends";
 
 export type PersistenceStatus = {
-  mode: "supabase" | "live-blob" | "live-blocked" | "local";
+  mode: "supabase" | "live-blob" | "live-fallback" | "live-blocked" | "local";
   canSaveOnLive: boolean;
   message: string;
 };
@@ -18,17 +19,33 @@ export function getPersistenceStatus(): PersistenceStatus {
 
   if (isVercelProduction()) {
     if (isBlobStorageEnabled()) {
+      if (isSupabaseJsonEnabled() || isGithubJsonEnabled()) {
+        return {
+          mode: "live-fallback",
+          canSaveOnLive: true,
+          message: "Live editing via Vercel Blob with Supabase/GitHub backup.",
+        };
+      }
       return {
         mode: "live-blob",
         canSaveOnLive: true,
         message: "Live editing is enabled via Vercel Blob.",
       };
     }
+
+    if (isSupabaseJsonEnabled() || isGithubJsonEnabled()) {
+      return {
+        mode: "live-fallback",
+        canSaveOnLive: true,
+        message: "Live editing via Supabase/GitHub storage.",
+      };
+    }
+
     return {
       mode: "live-blocked",
       canSaveOnLive: false,
       message:
-        "Vercel Blob is not connected. Live admin cannot save changes until you create a Blob store and redeploy.",
+        "No live storage configured. Add Vercel Blob, Supabase, or GITHUB_TOKEN on Vercel.",
     };
   }
 
