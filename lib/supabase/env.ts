@@ -29,10 +29,12 @@ export function isSupabaseConfigured() {
 }
 
 export function isSupabaseStorageEnabled() {
+  const url = getSupabaseProjectUrl();
   const serviceKey = getSupabaseServiceRoleKey();
   return (
-    isSupabaseConfigured() &&
+    Boolean(url) &&
     Boolean(serviceKey) &&
+    !isPlaceholderValue(url) &&
     !isPlaceholderValue(serviceKey)
   );
 }

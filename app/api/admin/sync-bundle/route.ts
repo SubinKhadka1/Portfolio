@@ -5,7 +5,7 @@ import { requireAdminUser } from "@/lib/auth";
 import { writeJsonFile } from "@/lib/json-store";
 import { revalidateLiveSite } from "@/lib/revalidate-site";
 import { isSupabaseStorageEnabled } from "@/lib/supabase/env";
-import { formatSupabaseKeyError, getSupabaseStorageDiagnostics, validateSupabaseKeys } from "@/lib/supabase/keys";
+import { formatSupabaseKeyError, getSupabaseStorageDiagnostics, validateSupabaseStorageKeys } from "@/lib/supabase/keys";
 
 /** Copy bundled data/*.json into Supabase site-data storage. */
 export async function POST() {
@@ -25,7 +25,7 @@ export async function POST() {
     );
   }
 
-  const keyIssues = validateSupabaseKeys();
+  const keyIssues = validateSupabaseStorageKeys();
   if (keyIssues.length > 0) {
     return NextResponse.json(
       {
@@ -64,7 +64,7 @@ export async function POST() {
       {
         error: message,
         storageDiagnostics: getSupabaseStorageDiagnostics(),
-        keyIssues: validateSupabaseKeys(),
+        keyIssues: validateSupabaseStorageKeys(),
       },
       { status: 500 }
     );

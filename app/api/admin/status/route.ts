@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { getPersistenceStatus } from "@/lib/persistence-status";
 import { probeJsonStorageHealth } from "@/lib/json-store";
 import { isSupabaseStorageEnabled } from "@/lib/supabase/env";
-import { validateSupabaseKeys, getSupabaseStorageDiagnostics } from "@/lib/supabase/keys";
+import { validateSupabaseStorageKeys, getSupabaseStorageDiagnostics } from "@/lib/supabase/keys";
 import { isVercelProduction } from "@/lib/storage-mode";
 
 export async function GET() {
   const status = getPersistenceStatus();
   const health = await probeJsonStorageHealth();
-  const keyIssues = validateSupabaseKeys();
+  const keyIssues = validateSupabaseStorageKeys();
 
   const needsSeed = health.supabaseEnabled && !health.supabaseOk;
 

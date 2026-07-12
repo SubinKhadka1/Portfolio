@@ -48,10 +48,9 @@ function jwtPayloadRole(key: string): string | null {
   }
 }
 
-export function validateSupabaseKeys(): SupabaseKeyIssue[] {
+export function validateSupabaseStorageKeys(): SupabaseKeyIssue[] {
   const issues: SupabaseKeyIssue[] = [];
   const url = getSupabaseProjectUrl();
-  const anon = getSupabaseAnonKey();
   const service = getSupabaseServiceRoleKey();
 
   if (!url || isPlaceholderValue(url)) {
@@ -61,29 +60,16 @@ export function validateSupabaseKeys(): SupabaseKeyIssue[] {
     });
   }
 
-  if (!anon || isPlaceholderValue(anon)) {
-    issues.push({
-      field: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-      message: "Set the publishable/anon key (sb_publishable_… or legacy eyJ… JWT).",
-    });
-  } else if (anon.startsWith("sb_secret_")) {
-    issues.push({
-      field: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-      message:
-        "This looks like a secret/service_role key. Put the publishable/anon key here instead.",
-    });
-  }
-
   if (!service || isPlaceholderValue(service)) {
     issues.push({
       field: "SUPABASE_SERVICE_ROLE_KEY",
-      message: "Set the secret key (sb_secret_…) or legacy service_role JWT (eyJ…).",
+      message: "Set the legacy service_role JWT (eyJ…) from Supabase → Settings → API → Legacy API Keys.",
     });
   } else if (service.startsWith("sb_publishable_")) {
     issues.push({
       field: "SUPABASE_SERVICE_ROLE_KEY",
       message:
-        'You pasted the publishable key here. Use the secret key (sb_secret_…) or legacy "service_role" JWT from Supabase → Settings → API Keys.',
+        'You pasted the publishable key here. Use the legacy service_role JWT (eyJ…) from Supabase → Settings → API → Legacy API Keys.',
     });
   } else if (service.startsWith("sb_secret_")) {
     issues.push({
@@ -95,7 +81,28 @@ export function validateSupabaseKeys(): SupabaseKeyIssue[] {
     issues.push({
       field: "SUPABASE_SERVICE_ROLE_KEY",
       message:
-        'This JWT has role "anon". Use the legacy service_role JWT (eyJ…) or the secret key (sb_secret_…) instead.',
+        'This JWT has role "anon". Use the legacy service_role JWT (eyJ…) instead.',
+    });
+  }
+
+  return issues;
+}
+
+export function validateSupabaseKeys(): SupabaseKeyIssue[] {
+  const issues = [...validateSupabaseStorageKeys()];
+  const anon = getSupabaseAnonKey();
+  const service = getSupabaseServiceRoleKey();
+
+  if (!anon || isPlaceholderValue(anon)) {
+    issues.push({
+      field: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      message: "Set the publishable/anon key (sb_publishable_… or legacy eyJ… JWT).",
+    });
+  } else if (anon.startsWith("sb_secret_")) {
+    issues.push({
+      field: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      message:
+        "This looks like a secret/service_role key. Put the publishable/anon key here instead.",
     });
   }
 
@@ -111,7 +118,7 @@ export function validateSupabaseKeys(): SupabaseKeyIssue[] {
 }
 
 export function assertSupabaseKeysForStorage(): void {
-  const issues = validateSupabaseKeys();
+  const issues = validateSupabaseStorageKeys();
   if (issues.length === 0) return;
   throw new Error(issues.map((issue) => `${issue.field}: ${issue.message}`).join(" "));
 }
