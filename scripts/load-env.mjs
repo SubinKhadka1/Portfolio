@@ -43,7 +43,7 @@ export function loadEnvLocal() {
     const parsed = parseEnvLine(line);
     if (!parsed) continue;
 
-    if (process.env[parsed.key] === undefined) {
+    if (process.env[parsed.key] === undefined || !process.env[parsed.key]?.trim()) {
       process.env[parsed.key] = parsed.value;
       keys.push(parsed.key);
     }
