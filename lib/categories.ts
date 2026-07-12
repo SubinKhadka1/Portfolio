@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { readJsonFile, writeJsonFile } from "@/lib/json-store";
 import { tryCreateClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isSupabaseConfigured, usesJsonFileStore } from "@/lib/supabase/env";
 import type { Category, ProjectType } from "@/lib/types/database";
 
 const CATEGORIES_JSON = "data/categories.json";
@@ -55,7 +55,7 @@ async function writeLocalCategories(categories: Category[]) {
 }
 
 export async function getCategories(projectType?: ProjectType): Promise<Category[]> {
-  if (isSupabaseConfigured()) {
+  if (isSupabaseConfigured() && !usesJsonFileStore()) {
     const supabase = await tryCreateClient();
     if (supabase) {
       let query = supabase.from("categories").select("*").order("sort_order", { ascending: true });
@@ -82,7 +82,7 @@ export async function createCategory(input: {
   const name = input.name.trim();
   if (!name) throw new Error("Category name is required");
 
-  if (isSupabaseConfigured()) {
+  if (isSupabaseConfigured() && !usesJsonFileStore()) {
     const supabase = await tryCreateClient();
     if (supabase) {
       const { data, error } = await supabase
@@ -118,7 +118,7 @@ export async function updateCategory(
   id: string,
   input: { name?: string; description?: string; sort_order?: number }
 ): Promise<Category> {
-  if (isSupabaseConfigured()) {
+  if (isSupabaseConfigured() && !usesJsonFileStore()) {
     const supabase = await tryCreateClient();
     if (supabase) {
       const patch: Record<string, unknown> = {};
@@ -158,7 +158,7 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(id: string): Promise<void> {
-  if (isSupabaseConfigured()) {
+  if (isSupabaseConfigured() && !usesJsonFileStore()) {
     const supabase = await tryCreateClient();
     if (supabase) {
       const { error } = await supabase.from("categories").delete().eq("id", id);
@@ -172,7 +172,7 @@ export async function deleteCategory(id: string): Promise<void> {
 }
 
 export async function reorderCategories(ids: string[]): Promise<Category[]> {
-  if (isSupabaseConfigured()) {
+  if (isSupabaseConfigured() && !usesJsonFileStore()) {
     const supabase = await tryCreateClient();
     if (supabase) {
       await Promise.all(

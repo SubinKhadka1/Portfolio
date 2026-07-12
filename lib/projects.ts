@@ -1,5 +1,5 @@
 import { tryCreateClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isSupabaseConfigured, usesJsonFileStore } from "@/lib/supabase/env";
 import { getLocalDashboardStats, getLocalProjects } from "@/lib/local-portfolio";
 import {
   galleryDesignToDesignItem,
@@ -99,7 +99,7 @@ export async function getProjects(
   type: ProjectType,
   options?: { publishedOnly?: boolean; admin?: boolean }
 ): Promise<Project[]> {
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || usesJsonFileStore()) {
     return getLocalProjectsFiltered(type, options);
   }
 
@@ -153,7 +153,7 @@ export async function getDesigns(): Promise<DesignItem[]> {
   }
 
   // Backward-compatible fallback for older datasets without homepage_designs.
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || usesJsonFileStore()) {
     return [];
   }
 
@@ -173,7 +173,7 @@ export async function getHomepageDesignProjects(options?: {
 }
 
 export async function getDesignGalleryPageData() {
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || usesJsonFileStore()) {
     const [designs, categories, settings] = await Promise.all([
       getLocalGalleryDesigns(),
       getCategories("design"),
@@ -243,7 +243,7 @@ export async function getClients(): Promise<ClientItem[]> {
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || usesJsonFileStore()) {
     return getLocalDashboardStats();
   }
 

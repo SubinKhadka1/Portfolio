@@ -11,7 +11,7 @@ export default function SyncDeployedDataButton() {
   async function sync() {
     if (
       !confirm(
-        "Import gallery + homepage data from the latest GitHub deploy into live storage? This overwrites live editor data (designs, gallery sections, settings) with what's in your last deployment."
+        "Import bundled data/*.json into Supabase site-data storage? This overwrites live editor data (portfolio, categories, settings)."
       )
     ) {
       return;
@@ -40,7 +40,7 @@ export default function SyncDeployedDataButton() {
         className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition-colors disabled:opacity-50"
       >
         {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-        Import latest GitHub deploy to live storage
+        Import bundled JSON to Supabase site-data
       </button>
       {message && <p className="text-xs mt-2 text-zinc-400">{message}</p>}
     </div>

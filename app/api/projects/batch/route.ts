@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth";
 import { createLocalProjectsBatch } from "@/lib/local-portfolio";
 import { tryCreateClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isSupabaseConfigured, usesJsonFileStore } from "@/lib/supabase/env";
 import type { ProjectInput } from "@/lib/types/database";
 import { parseRequestJson } from "@/lib/parse-response";
 import { revalidateLiveSite } from "@/lib/revalidate-site";
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    if (!isSupabaseConfigured()) {
+    if (!isSupabaseConfigured() || usesJsonFileStore()) {
       const projects = await createLocalProjectsBatch(items);
       revalidateLiveSite();
       return jsonResponse(projects, { status: 201 });

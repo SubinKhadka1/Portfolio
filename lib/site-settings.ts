@@ -1,11 +1,11 @@
-import { put } from "@vercel/blob";
 import {
   getSiteSettings,
   normalizeSiteSettings,
   writeSiteSettings,
   type SiteSettings,
 } from "@/lib/site-settings-read";
-import { isBlobStorageEnabled } from "@/lib/storage-mode";
+import { isSupabaseStorageEnabled } from "@/lib/supabase/env";
+import { saveHeroImageToSupabase } from "@/lib/supabase-media";
 import { promises as fs } from "fs";
 import path from "path";
 
@@ -22,17 +22,17 @@ export async function updateSiteSettings(
 }
 
 export async function saveHeroImage(file: File): Promise<string> {
-  const ext = file.name.split(".").pop()?.toLowerCase() || "png";
-  const safeName = `hero-${Date.now()}.${ext}`;
-
-  if (isBlobStorageEnabled()) {
-    const blob = await put(`hero/${safeName}`, file, {
-      access: "public",
-      contentType: file.type || undefined,
-    });
-    return blob.url;
+  if (isSupabaseStorageEnabled()) {
+    try {
+      return await saveHeroImageToSupabase(file);
+    } catch (err) {
+      if (process.env.VERCEL === "1") throw err;
+      console.error("[site-settings] Supabase hero upload failed, saving locally:", err);
+    }
   }
 
+  const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+  const safeName = `hero-${Date.now()}.${ext}`;
   const dir = path.join(process.cwd(), "public");
   const filepath = path.join(dir, safeName);
   const buffer = Buffer.from(await file.arrayBuffer());

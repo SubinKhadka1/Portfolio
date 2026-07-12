@@ -4,10 +4,9 @@ import path from "path";
 import { requireAdminUser } from "@/lib/auth";
 import { writeJsonFile } from "@/lib/json-store";
 import { revalidateLiveSite } from "@/lib/revalidate-site";
-import { isBlobStorageEnabled } from "@/lib/storage-mode";
-import { isGithubJsonEnabled, isSupabaseJsonEnabled } from "@/lib/storage-backends";
+import { isSupabaseStorageEnabled } from "@/lib/supabase/env";
 
-/** Copy the deployed data/*.json files (from GitHub) into Vercel Blob live storage. */
+/** Copy bundled data/*.json into Supabase site-data storage. */
 export async function POST() {
   try {
     await requireAdminUser();
@@ -15,11 +14,11 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!isBlobStorageEnabled() && !isSupabaseJsonEnabled() && !isGithubJsonEnabled()) {
+  if (!isSupabaseStorageEnabled()) {
     return NextResponse.json(
       {
         error:
-          "Remote storage is required. Connect Vercel Blob, Supabase, or GITHUB_TOKEN on Vercel.",
+          "Supabase Storage is required. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY on Vercel.",
       },
       { status: 503 }
     );
@@ -42,7 +41,7 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       message:
-        "Live storage updated (portfolio, gallery categories, and settings). Hard-refresh /designs to see changes.",
+        "Supabase site-data updated (portfolio, categories, and settings). Hard-refresh the homepage to see changes.",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Sync failed";

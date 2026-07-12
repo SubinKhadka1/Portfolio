@@ -1,6 +1,6 @@
 import { readJsonFile } from "@/lib/json-store";
 import { tryCreateClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isSupabaseConfigured, usesJsonFileStore } from "@/lib/supabase/env";
 import { homepageDesignToProjectShape } from "@/lib/design-module-mappers";
 import { getLocalGalleryDesign, getLocalHomepageDesign } from "@/lib/design-modules-store";
 import type { Project, ProjectType } from "@/lib/types/database";
@@ -39,7 +39,7 @@ async function getLocalProjectById(id: string): Promise<Project | null> {
 }
 
 export async function fetchProjectById(id: string): Promise<Project | null> {
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || usesJsonFileStore()) {
     return getLocalProjectById(id);
   }
 

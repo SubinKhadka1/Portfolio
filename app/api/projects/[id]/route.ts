@@ -6,7 +6,7 @@ import {
   updateLocalProject,
 } from "@/lib/local-portfolio";
 import { tryCreateClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isSupabaseConfigured, usesJsonFileStore } from "@/lib/supabase/env";
 import type { ProjectInput } from "@/lib/types/database";
 import { revalidateLiveSite } from "@/lib/revalidate-site";
 
@@ -15,7 +15,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function GET(_request: NextRequest, context: RouteContext) {
   const { id } = await context.params;
 
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || usesJsonFileStore()) {
     const project = await getLocalProject(id);
     if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(project);
@@ -48,7 +48,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   const { id } = await context.params;
   const body = (await request.json()) as Partial<ProjectInput>;
 
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || usesJsonFileStore()) {
     const project = await updateLocalProject(id, body);
     if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
     revalidateLiveSite();
@@ -105,7 +105,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
 
   const { id } = await context.params;
 
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || usesJsonFileStore()) {
     const deleted = await deleteLocalProject(id);
     if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
     revalidateLiveSite();

@@ -1,30 +1,25 @@
 import { NextResponse } from "next/server";
 import { getPersistenceStatus } from "@/lib/persistence-status";
 import { probeJsonStorageHealth } from "@/lib/json-store";
-import {
-  getBlobAuthMode,
-  isBlobStorageEnabled,
-  isVercelProduction,
-} from "@/lib/storage-mode";
-import { isGithubJsonEnabled, isSupabaseJsonEnabled } from "@/lib/storage-backends";
+import { isSupabaseStorageEnabled } from "@/lib/supabase/env";
+import { isVercelProduction } from "@/lib/storage-mode";
 
 export async function GET() {
   const status = getPersistenceStatus();
   const health = await probeJsonStorageHealth();
 
+  const needsSeed = health.supabaseEnabled && !health.supabaseOk;
+
   return NextResponse.json({
     ...status,
     ...health,
     vercel: isVercelProduction(),
-    blob: isBlobStorageEnabled(),
-    blobAuth: getBlobAuthMode(),
-    supabaseJson: isSupabaseJsonEnabled(),
-    githubJson: isGithubJsonEnabled(),
+    supabaseStorage: isSupabaseStorageEnabled(),
     canSaveOnLive: health.canWrite,
-    message: health.canWrite
-      ? health.blobSuspended
-        ? `Vercel Blob is suspended — saving via ${health.activeBackend}.`
-        : status.message
-      : "Live admin cannot save. Add Supabase (free) or upgrade Vercel Blob.",
+    message: !health.canWrite
+      ? "Live admin cannot save. Add Supabase Storage env vars on Vercel."
+      : needsSeed
+        ? `Supabase connected — seed site-data with portfolio.json if the homepage looks empty. (${health.supabaseError || "not found"})`
+        : status.message,
   });
 }

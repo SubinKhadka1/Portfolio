@@ -8,6 +8,12 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
+      // Legacy Vercel Blob URLs still referenced in older portfolio data
+      {
+        protocol: "https",
         hostname: "*.public.blob.vercel-storage.com",
         pathname: "/**",
       },

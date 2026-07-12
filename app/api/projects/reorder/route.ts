@@ -3,7 +3,7 @@ import { requireAdminUser } from "@/lib/auth";
 import { reorderLocalProjects } from "@/lib/local-portfolio";
 import type { ReorderItem, ReorderScope } from "@/lib/reorder-payload";
 import { tryCreateClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isSupabaseConfigured, usesJsonFileStore } from "@/lib/supabase/env";
 import { revalidateLiveSite } from "@/lib/revalidate-site";
 
 const NO_STORE_HEADERS = {
@@ -32,7 +32,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
-    if (!isSupabaseConfigured()) {
+    if (!isSupabaseConfigured() || usesJsonFileStore()) {
       await reorderLocalProjects(items, scope);
       revalidateLiveSite();
       return NextResponse.json({ success: true }, { headers: NO_STORE_HEADERS });

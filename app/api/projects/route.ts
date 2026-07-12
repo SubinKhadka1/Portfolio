@@ -5,7 +5,7 @@ import {
   getLocalProjects,
 } from "@/lib/local-portfolio";
 import { tryCreateClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isSupabaseConfigured, usesJsonFileStore } from "@/lib/supabase/env";
 import type { ProjectInput, ProjectType } from "@/lib/types/database";
 import { parseRequestJson } from "@/lib/parse-response";
 import { revalidateLiveSite } from "@/lib/revalidate-site";
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || usesJsonFileStore()) {
     if (type) {
       const projects = await getLocalProjects(type);
       const filtered = !admin ? projects.filter((p) => p.published) : projects;
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    if (!isSupabaseConfigured()) {
+    if (!isSupabaseConfigured() || usesJsonFileStore()) {
       const project = await createLocalProject(body);
       revalidateLiveSite();
       return jsonResponse(project, { status: 201 });

@@ -1,14 +1,14 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isSupabaseJsonEnabled } from "@/lib/storage-backends";
+import { isSupabaseStorageEnabled } from "@/lib/supabase/env";
 
-const SITE_DATA_BUCKET = "site-data";
+export const SITE_DATA_BUCKET = "site-data";
 
 export function supabaseJsonPath(relativePath: string) {
   return relativePath.replace(/^\/+/, "");
 }
 
 export async function readSupabaseJson<T>(relativePath: string): Promise<T | null> {
-  if (!isSupabaseJsonEnabled()) return null;
+  if (!isSupabaseStorageEnabled()) return null;
 
   try {
     const supabase = createAdminClient();
@@ -26,15 +26,15 @@ export async function readSupabaseJson<T>(relativePath: string): Promise<T | nul
 }
 
 export async function writeSupabaseJson<T>(relativePath: string, value: T): Promise<void> {
-  if (!isSupabaseJsonEnabled()) {
-    throw new Error("Supabase storage is not configured.");
+  if (!isSupabaseStorageEnabled()) {
+    throw new Error("Supabase Storage is not configured.");
   }
 
   const supabase = createAdminClient();
   const body = JSON.stringify(value, null, 2);
-  const path = supabaseJsonPath(relativePath);
+  const objectPath = supabaseJsonPath(relativePath);
 
-  const upload = await supabase.storage.from(SITE_DATA_BUCKET).upload(path, body, {
+  const upload = await supabase.storage.from(SITE_DATA_BUCKET).upload(objectPath, body, {
     upsert: true,
     contentType: "application/json",
     cacheControl: "0",
@@ -52,13 +52,13 @@ export async function writeSupabaseJson<T>(relativePath: string, value: T): Prom
 }
 
 export async function supabaseJsonExists(relativePath: string): Promise<boolean> {
-  if (!isSupabaseJsonEnabled()) return false;
+  if (!isSupabaseStorageEnabled()) return false;
 
   try {
     const supabase = createAdminClient();
-    const path = supabaseJsonPath(relativePath);
-    const folder = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
-    const name = path.includes("/") ? path.slice(path.lastIndexOf("/") + 1) : path;
+    const objectPath = supabaseJsonPath(relativePath);
+    const folder = objectPath.includes("/") ? objectPath.slice(0, objectPath.lastIndexOf("/")) : "";
+    const name = objectPath.includes("/") ? objectPath.slice(objectPath.lastIndexOf("/") + 1) : objectPath;
     const { data, error } = await supabase.storage.from(SITE_DATA_BUCKET).list(folder, {
       search: name,
       limit: 1,
