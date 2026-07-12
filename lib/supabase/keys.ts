@@ -35,6 +35,19 @@ function isPlaceholderValue(value: string) {
   );
 }
 
+function jwtPayloadRole(key: string): string | null {
+  if (!key.startsWith("eyJ")) return null;
+  try {
+    const segment = key.split(".")[1];
+    if (!segment) return null;
+    const json = Buffer.from(segment, "base64url").toString("utf8");
+    const payload = JSON.parse(json) as { role?: string };
+    return payload.role ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function validateSupabaseKeys(): SupabaseKeyIssue[] {
   const issues: SupabaseKeyIssue[] = [];
   const url = getSupabaseProjectUrl();
@@ -72,25 +85,44 @@ export function validateSupabaseKeys(): SupabaseKeyIssue[] {
       message:
         'You pasted the publishable key here. Use the secret key (sb_secret_…) or legacy "service_role" JWT from Supabase → Settings → API Keys.',
     });
+  } else if (jwtPayloadRole(service) === "anon") {
+    issues.push({
+      field: "SUPABASE_SERVICE_ROLE_KEY",
+      message:
+        'This JWT has role "anon". Use the legacy service_role JWT (eyJ…) or the secret key (sb_secret_…) instead.',
+    });
+  }
+
+  if (anon && service && anon === service) {
+    issues.push({
+      field: "SUPABASE_SERVICE_ROLE_KEY",
+      message:
+        "Service role key is identical to the anon/publishable key. They must be different values from Supabase → Settings → API Keys.",
+    });
   }
 
   return issues;
 }
 
+export function assertSupabaseKeysForStorage(): void {
+  const issues = validateSupabaseKeys();
+  if (issues.length === 0) return;
+  throw new Error(issues.map((issue) => `${issue.field}: ${issue.message}`).join(" "));
+}
+
 export function formatSupabaseKeyError(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err);
-  if (/invalid compact jws/i.test(message)) {
+  if (/invalid compact jws|invalid jwt/i.test(message)) {
     return [
-      "Invalid Compact JWS — your SUPABASE_SERVICE_ROLE_KEY is wrong for Storage.",
-      "Fix: Supabase Dashboard → Settings → API Keys → copy the secret key (sb_secret_…) into SUPABASE_SERVICE_ROLE_KEY on Vercel.",
-      "Or use the legacy service_role JWT (starts with eyJ) instead of sb_secret_.",
-      "Make sure you did NOT paste the publishable key into the service role slot.",
+      "Invalid Compact JWS — the service role key was sent as a Bearer JWT but is not a valid JWT.",
+      "Fix on Vercel: SUPABASE_SERVICE_ROLE_KEY must be the secret key (sb_secret_…) or legacy service_role JWT (eyJ…), NOT the publishable/anon key.",
+      "If you use sb_secret_, do not put it in Authorization; only apikey is used (latest code). Redeploy, or paste the legacy service_role JWT from Supabase → Settings → API → Legacy API Keys.",
     ].join(" ");
   }
   if (/required property ['"]authorization['"]/i.test(message)) {
     return [
-      "Supabase Storage rejected the request because the Authorization header was missing.",
-      "This is a server bug — redeploy the latest code after the storage-rest fix.",
+      "Supabase Storage requires a legacy service_role JWT in SUPABASE_SERVICE_ROLE_KEY for this project.",
+      "Copy the service_role key (starts with eyJ) from Supabase → Settings → API → Legacy API Keys into Vercel, redeploy, then import again.",
     ].join(" ");
   }
   return message;

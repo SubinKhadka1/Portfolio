@@ -5,7 +5,7 @@ import { requireAdminUser } from "@/lib/auth";
 import { writeJsonFile } from "@/lib/json-store";
 import { revalidateLiveSite } from "@/lib/revalidate-site";
 import { isSupabaseStorageEnabled } from "@/lib/supabase/env";
-import { getSupabaseStorageDiagnostics } from "@/lib/supabase/keys";
+import { formatSupabaseKeyError, getSupabaseStorageDiagnostics, validateSupabaseKeys } from "@/lib/supabase/keys";
 
 /** Copy bundled data/*.json into Supabase site-data storage. */
 export async function POST() {
@@ -22,6 +22,18 @@ export async function POST() {
           "Supabase Storage is required. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY on Vercel.",
       },
       { status: 503 }
+    );
+  }
+
+  const keyIssues = validateSupabaseKeys();
+  if (keyIssues.length > 0) {
+    return NextResponse.json(
+      {
+        error: keyIssues.map((i) => `${i.field}: ${i.message}`).join(" "),
+        keyIssues,
+        storageDiagnostics: getSupabaseStorageDiagnostics(),
+      },
+      { status: 400 }
     );
   }
 
@@ -47,7 +59,14 @@ export async function POST() {
         "Supabase site-data updated (portfolio, categories, and settings). Hard-refresh the homepage to see changes.",
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Sync failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const message = formatSupabaseKeyError(err);
+    return NextResponse.json(
+      {
+        error: message,
+        storageDiagnostics: getSupabaseStorageDiagnostics(),
+        keyIssues: validateSupabaseKeys(),
+      },
+      { status: 500 }
+    );
   }
 }

@@ -11,6 +11,11 @@ type StorageStatus = {
   supabaseError?: string;
   activeBackend?: string;
   message?: string;
+  keyIssues?: { field: string; message: string }[];
+  storageDiagnostics?: {
+    keysSwapped?: boolean;
+    serviceRoleKeyType?: string;
+  };
 };
 
 export default function AdminSetupBanner() {
@@ -24,6 +29,21 @@ export default function AdminSetupBanner() {
   }, []);
 
   if (!status) return null;
+
+  if (status.keyIssues && status.keyIssues.length > 0) {
+    return (
+      <div className="mb-6 p-4 rounded-xl border border-red-500/40 bg-red-500/10">
+        <p className="text-red-200 text-sm font-semibold">Supabase API keys need fixing on Vercel</p>
+        <ul className="text-red-200/80 text-xs mt-2 leading-relaxed list-disc pl-4 space-y-1">
+          {status.keyIssues.map((issue) => (
+            <li key={issue.field}>
+              <code className="text-red-100">{issue.field}</code>: {issue.message}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
 
   if (status.mode === "live-blocked") {
     return (

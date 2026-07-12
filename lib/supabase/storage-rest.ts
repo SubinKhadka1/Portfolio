@@ -1,8 +1,8 @@
 import {
+  assertSupabaseKeysForStorage,
   formatSupabaseKeyError,
   getSupabaseProjectUrl,
   getSupabaseServiceRoleKey,
-  getSupabaseStorageDiagnostics,
 } from "@/lib/supabase/keys";
 
 function storageHeaders(serviceKey: string, extra?: Record<string, string>) {
@@ -10,13 +10,19 @@ function storageHeaders(serviceKey: string, extra?: Record<string, string>) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set.");
   }
 
-  // Storage requires both apikey and Authorization.
-  // For sb_secret_ keys, use the same value for both (Supabase API keys docs).
-  return {
+  const headers: Record<string, string> = {
     apikey: serviceKey,
-    Authorization: `Bearer ${serviceKey}`,
     ...extra,
   };
+
+  // New sb_secret_ keys are opaque — Bearer sb_secret_… causes "Invalid Compact JWS".
+  // Hosted Supabase substitutes a service JWT from apikey alone. Legacy eyJ service_role JWTs
+  // still use Authorization Bearer (see Supabase "Migrating to new API keys").
+  if (serviceKey.startsWith("eyJ")) {
+    headers.Authorization = `Bearer ${serviceKey}`;
+  }
+
+  return headers;
 }
 
 function storageBaseUrl() {
@@ -48,19 +54,11 @@ export async function uploadStorageObject(
   body: string | Buffer | Uint8Array,
   options?: { contentType?: string; upsert?: boolean }
 ) {
-  const serviceKey = getSupabaseServiceRoleKey();
-  if (!serviceKey) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set.");
-  }
+  assertSupabaseKeysForStorage();
 
+  const serviceKey = getSupabaseServiceRoleKey();
   const path = objectPath.replace(/^\/+/, "");
   const url = `${storageBaseUrl()}/object/${bucket}/${path}`;
-
-  console.info("[storage-rest] upload", {
-    bucket,
-    path,
-    ...getSupabaseStorageDiagnostics(),
-  });
 
   let payload: BodyInit;
   if (typeof body === "string") {

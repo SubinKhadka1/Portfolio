@@ -21,7 +21,11 @@ export default function SyncDeployedDataButton() {
     setMessage("");
     try {
       const res = await fetch("/api/admin/sync-bundle", { method: "POST" });
-      const data = await parseResponseJson<{ message?: string; error?: string }>(res);
+      const data = await parseResponseJson<{
+        message?: string;
+        error?: string;
+        keyIssues?: { field: string; message: string }[];
+      }>(res);
       if (!res.ok) throw new Error(data.error || "Sync failed");
       setMessage(data.message || "Synced successfully. Refresh the homepage.");
     } catch (err) {
