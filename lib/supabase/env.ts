@@ -1,11 +1,13 @@
-function hasEnv(name: string) {
-  const value = process.env[name];
-  return typeof value === "string" && value.trim() !== "";
-}
+import {
+  getSupabaseAnonKey,
+  getSupabaseProjectUrl,
+  getSupabaseServiceRoleKey,
+} from "@/lib/supabase/keys";
 
 function isPlaceholderValue(value: string) {
   const v = value.trim().toLowerCase();
   return (
+    v.includes("your_sb_") ||
     v.includes("your_") ||
     v.includes("your-") ||
     v.includes("placeholder") ||
@@ -15,8 +17,8 @@ function isPlaceholderValue(value: string) {
 }
 
 export function isSupabaseConfigured() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || "";
+  const url = getSupabaseProjectUrl();
+  const key = getSupabaseAnonKey();
   return Boolean(
     url &&
     key &&
@@ -27,7 +29,7 @@ export function isSupabaseConfigured() {
 }
 
 export function isSupabaseStorageEnabled() {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
+  const serviceKey = getSupabaseServiceRoleKey();
   return (
     isSupabaseConfigured() &&
     Boolean(serviceKey) &&
@@ -41,8 +43,8 @@ export function usesJsonFileStore() {
 }
 
 export function getSupabaseEnv() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = getSupabaseProjectUrl();
+  const anonKey = getSupabaseAnonKey();
   if (!url || !anonKey) return null;
   return { url, anonKey };
 }

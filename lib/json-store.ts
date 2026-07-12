@@ -5,6 +5,7 @@ import {
   supabaseJsonExists,
   writeSupabaseJson,
 } from "@/lib/supabase-json-store";
+import { formatSupabaseKeyError } from "@/lib/supabase/keys";
 import { isSupabaseStorageEnabled, isVercelProduction } from "@/lib/storage-mode";
 
 async function readDiskJson<T>(relativePath: string): Promise<T | null> {
@@ -48,7 +49,7 @@ export async function writeJsonFile<T>(relativePath: string, data: T): Promise<v
       }
       return;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Supabase save failed";
+      const message = formatSupabaseKeyError(err);
       if (isVercelProduction()) {
         throw new Error(`Could not save to Supabase: ${message}`);
       }

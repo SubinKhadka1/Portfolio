@@ -121,14 +121,20 @@ export function validateSupabaseEnv(options = {}) {
       problems.push({
         name: "SUPABASE_SERVICE_ROLE_KEY",
         issue: "missing",
-        hint: 'Supabase Dashboard → Settings → API Keys → "service_role" / "secret" key (starts with sb_secret_ or eyJ…). Never expose this in client code.',
+        hint: 'Supabase Dashboard → Settings → API Keys → "secret" key (sb_secret_…) or legacy service_role JWT (eyJ…).',
       });
     } else if (isPlaceholderValue(service)) {
       problems.push({
         name: "SUPABASE_SERVICE_ROLE_KEY",
         issue: "placeholder",
         current: service,
-        hint: 'Replace your_sb_secret_key with the real secret/service_role key (sb_secret_…).',
+        hint: 'Replace your_sb_secret_key with the real secret key (sb_secret_…).',
+      });
+    } else if (service.startsWith("sb_publishable_")) {
+      problems.push({
+        name: "SUPABASE_SERVICE_ROLE_KEY",
+        issue: "wrong-key-type",
+        hint: 'You pasted the publishable key here. Use sb_secret_… or legacy service_role JWT instead.',
       });
     }
   }
