@@ -5,6 +5,7 @@ import { requireAdminUser } from "@/lib/auth";
 import { writeJsonFile } from "@/lib/json-store";
 import { revalidateLiveSite } from "@/lib/revalidate-site";
 import { isSupabaseStorageEnabled } from "@/lib/supabase/env";
+import { getSupabaseStorageDiagnostics } from "@/lib/supabase/keys";
 
 /** Copy bundled data/*.json into Supabase site-data storage. */
 export async function POST() {
@@ -23,6 +24,8 @@ export async function POST() {
       { status: 503 }
     );
   }
+
+  console.info("[sync-bundle] starting", getSupabaseStorageDiagnostics());
 
   try {
     const portfolioPath = path.join(process.cwd(), "data", "portfolio.json");

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getPersistenceStatus } from "@/lib/persistence-status";
 import { probeJsonStorageHealth } from "@/lib/json-store";
 import { isSupabaseStorageEnabled } from "@/lib/supabase/env";
-import { validateSupabaseKeys } from "@/lib/supabase/keys";
+import { validateSupabaseKeys, getSupabaseStorageDiagnostics } from "@/lib/supabase/keys";
 import { isVercelProduction } from "@/lib/storage-mode";
 
 export async function GET() {
@@ -16,6 +16,7 @@ export async function GET() {
     ...status,
     ...health,
     keyIssues,
+    storageDiagnostics: getSupabaseStorageDiagnostics(),
     vercel: isVercelProduction(),
     supabaseStorage: isSupabaseStorageEnabled(),
     canSaveOnLive: health.canWrite && keyIssues.length === 0,

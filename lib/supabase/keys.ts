@@ -87,5 +87,44 @@ export function formatSupabaseKeyError(err: unknown): string {
       "Make sure you did NOT paste the publishable key into the service role slot.",
     ].join(" ");
   }
+  if (/required property ['"]authorization['"]/i.test(message)) {
+    return [
+      "Supabase Storage rejected the request because the Authorization header was missing.",
+      "This is a server bug — redeploy the latest code after the storage-rest fix.",
+    ].join(" ");
+  }
   return message;
+}
+
+/** Safe diagnostics for logs/API — never prints secret values. */
+export function getSupabaseStorageDiagnostics() {
+  const url = getSupabaseProjectUrl();
+  const anon = getSupabaseAnonKey();
+  const service = getSupabaseServiceRoleKey();
+
+  return {
+    urlPresent: Boolean(url),
+    urlHost: url ? new URL(url).host : null,
+    anonKeyPresent: Boolean(anon),
+    anonKeyType: anon.startsWith("sb_publishable_")
+      ? "publishable"
+      : anon.startsWith("sb_secret_")
+        ? "secret-wrong-slot"
+        : anon.startsWith("eyJ")
+          ? "legacy-jwt"
+          : anon
+            ? "unknown"
+            : "missing",
+    serviceRoleKeyPresent: Boolean(service),
+    serviceRoleKeyType: service.startsWith("sb_secret_")
+      ? "secret"
+      : service.startsWith("sb_publishable_")
+        ? "publishable-wrong-slot"
+        : service.startsWith("eyJ")
+          ? "legacy-jwt"
+          : service
+            ? "unknown"
+            : "missing",
+    keysSwapped: anon.startsWith("sb_secret_") || service.startsWith("sb_publishable_"),
+  };
 }
