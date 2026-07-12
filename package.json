@@ -12,7 +12,8 @@
     "lint": "eslint",
     "ship": "node scripts/ship.mjs",
     "sync": "node scripts/watch-sync.mjs",
-    "seed:supabase": "node scripts/seed-supabase-storage.mjs"
+    "seed:supabase": "node scripts/seed-supabase-storage.mjs",
+    "setup:supabase": "node scripts/setup-supabase-storage.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

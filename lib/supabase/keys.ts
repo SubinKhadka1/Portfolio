@@ -85,6 +85,12 @@ export function validateSupabaseKeys(): SupabaseKeyIssue[] {
       message:
         'You pasted the publishable key here. Use the secret key (sb_secret_…) or legacy "service_role" JWT from Supabase → Settings → API Keys.',
     });
+  } else if (service.startsWith("sb_secret_")) {
+    issues.push({
+      field: "SUPABASE_SERVICE_ROLE_KEY",
+      message:
+        "This Supabase project needs the legacy service_role JWT (eyJ…) for Storage. Replace sb_secret_ with the service_role key from Settings → API → Legacy API Keys on Vercel.",
+    });
   } else if (jwtPayloadRole(service) === "anon") {
     issues.push({
       field: "SUPABASE_SERVICE_ROLE_KEY",

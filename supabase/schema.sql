@@ -94,6 +94,12 @@ CREATE POLICY "admin_delete_storage" ON storage.objects
     bucket_id = 'portfolio-media' AND auth.role() = 'authenticated'
   );
 
+-- Service role / server uploads (bypasses RLS when using service_role JWT; explicit for clarity)
+DROP POLICY IF EXISTS "service_media_all" ON storage.objects;
+CREATE POLICY "service_media_all" ON storage.objects
+  FOR ALL USING (bucket_id = 'portfolio-media' AND auth.role() = 'service_role')
+  WITH CHECK (bucket_id = 'portfolio-media' AND auth.role() = 'service_role');
+
 -- Site JSON (portfolio.json, categories.json, site-settings.json)
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('site-data', 'site-data', true)
@@ -105,6 +111,11 @@ CREATE POLICY "public_read_site_data" ON storage.objects
 CREATE POLICY "service_site_data_all" ON storage.objects
   FOR ALL USING (bucket_id = 'site-data')
   WITH CHECK (bucket_id = 'site-data');
+
+DROP POLICY IF EXISTS "service_site_data_role" ON storage.objects;
+CREATE POLICY "service_site_data_role" ON storage.objects
+  FOR ALL USING (bucket_id = 'site-data' AND auth.role() = 'service_role')
+  WITH CHECK (bucket_id = 'site-data' AND auth.role() = 'service_role');
 
 -- Default categories
 INSERT INTO categories (name, slug, project_type) VALUES

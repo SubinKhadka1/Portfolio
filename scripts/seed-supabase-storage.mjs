@@ -35,7 +35,7 @@ async function main() {
   }
 
   const { url, serviceRoleKey, summary } = validateSupabaseEnv({
-    requireAnon: true,
+    requireAnon: false,
     requireServiceRole: true,
   });
 

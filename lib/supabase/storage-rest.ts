@@ -4,6 +4,7 @@ import {
   getSupabaseProjectUrl,
   getSupabaseServiceRoleKey,
 } from "@/lib/supabase/keys";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 function storageHeaders(serviceKey: string, extra?: Record<string, string>) {
   if (!serviceKey) {
@@ -58,6 +59,24 @@ export async function uploadStorageObject(
 
   const serviceKey = getSupabaseServiceRoleKey();
   const path = objectPath.replace(/^\/+/, "");
+
+  if (serviceKey.startsWith("eyJ")) {
+    const supabase = createAdminClient();
+    const payload =
+      typeof body === "string"
+        ? body
+        : Buffer.from(body instanceof Uint8Array ? body : new Uint8Array(body));
+
+    const { error } = await supabase.storage.from(bucket).upload(path, payload, {
+      upsert: options?.upsert ?? false,
+      contentType: options?.contentType,
+      cacheControl: "0",
+    });
+
+    if (error) throw new Error(formatSupabaseKeyError(error.message));
+    return;
+  }
+
   const url = `${storageBaseUrl()}/object/${bucket}/${path}`;
 
   let payload: BodyInit;
