@@ -29,11 +29,20 @@ export default function DesignGalleryJustifiedGrid<T extends GalleryAspectSource
   packOptions?: GalleryPackOptions;
   dragDisabled?: boolean;
   onReorder?: (ordered: T[]) => void;
-  renderCard: (item: T, layout: { height: number; index: number; dragging: boolean }) => ReactNode;
+  renderCard: (item: T, layout: { height: number; index: number; dragging: boolean; onImageLoad?: (ratio: number) => void }) => ReactNode;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [aspectRatios, setAspectRatios] = useState<Record<string, number>>({});
+
+  const itemsWithRatios = useMemo(() => {
+    if (Object.keys(aspectRatios).length === 0) return items;
+    return items.map((item) => ({
+      ...item,
+      runtimeAspectRatio: aspectRatios[item.id],
+    }));
+  }, [items, aspectRatios]);
 
   useLayoutEffect(() => {
     const node = containerRef.current;
@@ -62,8 +71,8 @@ export default function DesignGalleryJustifiedGrid<T extends GalleryAspectSource
 
   const layout = useMemo(() => {
     const width = containerWidth > 0 ? containerWidth : 1152;
-    return packGalleryRows(items, width, resolvedPack);
-  }, [items, containerWidth, resolvedPack]);
+    return packGalleryRows(itemsWithRatios, width, resolvedPack);
+  }, [itemsWithRatios, containerWidth, resolvedPack]);
 
   if (items.length === 0) return null;
 
@@ -93,6 +102,13 @@ export default function DesignGalleryJustifiedGrid<T extends GalleryAspectSource
               const dragging = dragId === item.id;
               const canDrag = !dragDisabled && !!onReorder;
 
+              const handleImageLoad = (ratio: number) => {
+                setAspectRatios((prev) => {
+                  if (Math.abs((prev[item.id] || 0) - ratio) < 0.01) return prev;
+                  return { ...prev, [item.id]: ratio };
+                });
+              };
+
               return (
                 <div
                   key={item.id}
@@ -120,7 +136,7 @@ export default function DesignGalleryJustifiedGrid<T extends GalleryAspectSource
                     setDragId(null);
                   }}
                 >
-                  {renderCard(item, { height: rowHeight, index, dragging })}
+                  {renderCard(item, { height: rowHeight, index, dragging, onImageLoad: handleImageLoad })}
                 </div>
               );
             })}

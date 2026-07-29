@@ -2585,26 +2585,15 @@ body.page-designs ::-webkit-scrollbar-thumb {
   display: flex;
   width: 100%;
   max-width: 100%;
-}
-
-@media (max-width: 540px) {
-  .gallery-justified .bh-row,
-  .gallery-page .bh-row {
-    justify-content: center;
-  }
-}
-
-@media (min-width: 541px) and (max-width: 1023px) {
-  .gallery-justified .bh-row,
-  .gallery-page .bh-row {
-    justify-content: center;
-  }
+  justify-content: flex-start;
+  align-items: stretch;
 }
 
 .bh-row__cell {
   flex-shrink: 0;
   overflow: hidden;
   min-width: 0;
+  flex-grow: 0;
 }
 
 .bh-row__cell--dragging {
@@ -2652,6 +2641,7 @@ body.page-designs ::-webkit-scrollbar-thumb {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  object-position: center center;
   display: block;
   background: #ffffff;
 }

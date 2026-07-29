@@ -11,10 +11,12 @@ function GalleryCard({
   design,
   height,
   onOpen,
+  onImageLoad,
 }: {
   design: DesignItem;
   height: number;
   onOpen: () => void;
+  onImageLoad?: (ratio: number) => void;
 }) {
   return (
     <button
@@ -33,6 +35,17 @@ function GalleryCard({
         width={design.imageWidth}
         height={design.imageHeight}
         draggable={false}
+        ref={(el) => {
+          if (el && el.complete && el.naturalWidth && el.naturalHeight && onImageLoad) {
+            onImageLoad(el.naturalWidth / el.naturalHeight);
+          }
+        }}
+        onLoad={(e) => {
+          const target = e.target as HTMLImageElement;
+          if (target.naturalWidth && target.naturalHeight && onImageLoad) {
+            onImageLoad(target.naturalWidth / target.naturalHeight);
+          }
+        }}
       />
       {design.featured ? (
         <span className="gallery-card__featured" aria-label="Featured">
@@ -60,8 +73,8 @@ function JustifiedSection({
       <DesignGalleryJustifiedGrid
         items={designs}
         className="gallery-justified"
-        renderCard={(design, { height }) => (
-          <GalleryCard design={design} height={height} onOpen={() => onOpen(design.id)} />
+        renderCard={(design, { height, onImageLoad }) => (
+          <GalleryCard design={design} height={height} onOpen={() => onOpen(design.id)} onImageLoad={onImageLoad} />
         )}
       />
     </section>

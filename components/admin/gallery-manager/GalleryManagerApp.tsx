@@ -141,7 +141,7 @@ export default function GalleryManagerApp({
     return groupGalleryDesignsByCategory(filtered, categories);
   }, [categoryFilter, search, filtered, categories]);
 
-  const renderAdminCard = (design: GalleryDesign, height: number, dragging: boolean) => (
+  const renderAdminCard = (design: GalleryDesign, height: number, dragging: boolean, onImageLoad?: (ratio: number) => void) => (
     <GalleryDesignCard
       design={design}
       height={height}
@@ -161,6 +161,7 @@ export default function GalleryManagerApp({
           metadata: { ...design.metadata, featured: !design.metadata?.featured },
         })
       }
+      onImageLoad={onImageLoad}
     />
   );
 
@@ -607,8 +608,8 @@ export default function GalleryManagerApp({
                         packOptions={packOptions}
                         dragDisabled={!editGrid || sort !== "order"}
                         onReorder={(ordered) => saveSectionReorder(section.designs, ordered)}
-                        renderCard={(design, { height, dragging }) =>
-                          renderAdminCard(design, height, dragging)
+                        renderCard={(design, { height, dragging, onImageLoad }) =>
+                          renderAdminCard(design, height, dragging, onImageLoad)
                         }
                       />
                     </section>
@@ -621,8 +622,8 @@ export default function GalleryManagerApp({
                   packOptions={packOptions}
                   dragDisabled={!editGrid || sort !== "order"}
                   onReorder={saveReorder}
-                  renderCard={(design, { height, dragging }) =>
-                    renderAdminCard(design, height, dragging)
+                  renderCard={(design, { height, dragging, onImageLoad }) =>
+                    renderAdminCard(design, height, dragging, onImageLoad)
                   }
                 />
               )

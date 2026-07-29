@@ -25,10 +25,15 @@ export type GalleryAspectSource = {
     imageHeight?: number;
     aspectRatio?: "square" | "portrait";
   };
+  runtimeAspectRatio?: number;
 };
 
 /** Width ÷ height — drives justified row sizing. */
 export function galleryWidthOverHeight(item: GalleryAspectSource): number {
+  if (item.runtimeAspectRatio && item.runtimeAspectRatio > 0) {
+    return item.runtimeAspectRatio;
+  }
+
   const w = item.imageWidth ?? item.metadata?.imageWidth;
   const h = item.imageHeight ?? item.metadata?.imageHeight;
   const ar = item.aspectRatio ?? item.metadata?.aspectRatio;
@@ -173,46 +178,49 @@ export function galleryCardWidth(height: number, item: GalleryAspectSource): num
 
 /** Responsive row packing tuned for phone, tablet, and desktop. */
 export function getGalleryPackOptionsForWidth(width: number): GalleryPackOptions {
-  if (width < GALLERY_MOBILE_MAX_WIDTH) {
+  if (width <= GALLERY_MOBILE_MAX_WIDTH) {
     return {
       gap: 4,
       minHeight: 86,
-      // Tall pairs (pull-up banners) need more headroom on large phones — clamp, never split.
-      maxHeight: Math.round(Math.min(420, width * 0.92)),
+      maxHeight: Math.round(width * 1.5),
       mobilePacking: true,
     };
   }
-  if (width < GALLERY_TABLET_MAX_WIDTH) {
+  if (width <= GALLERY_TABLET_MAX_WIDTH) {
     return {
-      gap: 4,
-      minHeight: 96,
-      // iPad: same aspect-aware grouping as phone, with taller rows for the wider screen.
-      maxHeight: Math.round(Math.min(480, width * 0.58)),
-      mobilePacking: true,
+      gap: 6,
+      minHeight: 110,
+      // iPad: cap row height when packing so rows don't get too tall; rows still fill width in layout.
+      maxHeight: Math.round(width * 0.52),
+      mobilePacking: width < 820,
     };
   }
   return {
-    gap: GALLERY_ROW_GAP_PX,
+    gap: 8,
     minHeight: GALLERY_MIN_ROW_HEIGHT,
-    maxHeight: GALLERY_MAX_ROW_HEIGHT,
+    maxHeight: Math.round(Math.max(GALLERY_MAX_ROW_HEIGHT, width * 0.58)),
     mobilePacking: false,
   };
 }
 
-/** Row cell widths that fill the container (last cell absorbs rounding slack). */
+/** Row cell widths that fill the container edge-to-edge (Behance-style). */
 export function computeJustifiedRow<T extends GalleryAspectSource>(
   row: T[],
   containerWidth: number,
   gap: number,
-  maxHeight: number
+  _maxHeight?: number
 ): { height: number; cellWidths: number[] } {
-  const gaps = Math.max(0, row.length - 1) * gap;
+  if (row.length === 0) {
+    return { height: GALLERY_MIN_ROW_HEIGHT, cellWidths: [] };
+  }
+
+  const gapsTotal = Math.max(0, row.length - 1) * gap;
   const totalRatio = row.reduce((sum, item) => sum + galleryWidthOverHeight(item), 0);
-  let height = totalRatio > 0 ? (containerWidth - gaps) / totalRatio : GALLERY_MIN_ROW_HEIGHT;
-  height = Math.min(height, maxHeight);
+  const height =
+    totalRatio > 0 ? (containerWidth - gapsTotal) / totalRatio : GALLERY_MIN_ROW_HEIGHT;
 
   const cellWidths = row.map((item) => height * galleryWidthOverHeight(item));
-  const used = cellWidths.reduce((sum, w) => sum + w, 0) + gaps;
+  const used = cellWidths.reduce((sum, w) => sum + w, 0) + gapsTotal;
   const leftover = containerWidth - used;
   if (leftover > 0.5 && cellWidths.length > 0) {
     cellWidths[cellWidths.length - 1] += leftover;

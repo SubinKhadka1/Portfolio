@@ -53,7 +53,7 @@ export default function GalleryJustifiedMosaic({
     <DesignGalleryJustifiedGrid
       items={layoutItems}
       className="dgm-mosaic"
-      renderCard={(design, { height }) => {
+      renderCard={(design, { height, onImageLoad }) => {
         const isDragging = dragId === design.id;
         const hint =
           dropTarget?.id === design.id ? dropTarget.side : null;
@@ -103,6 +103,17 @@ export default function GalleryJustifiedMosaic({
               alt={design.title}
               className="dgm-mosaic__img"
               draggable={false}
+              ref={(el) => {
+                if (el && el.complete && el.naturalWidth && el.naturalHeight && onImageLoad) {
+                  onImageLoad(el.naturalWidth / el.naturalHeight);
+                }
+              }}
+              onLoad={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (target.naturalWidth && target.naturalHeight && onImageLoad) {
+                  onImageLoad(target.naturalWidth / target.naturalHeight);
+                }
+              }}
             />
             {renderOverlay(design, { busy: false })}
           </article>

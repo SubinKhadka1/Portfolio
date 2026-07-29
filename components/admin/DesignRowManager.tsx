@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
@@ -159,14 +158,12 @@ export default function DesignRowManager({
   projects: Project[];
   portfolioRows: number;
 }) {
-  const router = useRouter();
   const rowCount = clampMarqueeRows(portfolioRows);
   const projectsRef = useRef(initial);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [projects, setProjects] = useState(initial);
   const [drag, setDrag] = useState<{ row: number; index: number } | null>(null);
-  const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [showUpload, setShowUpload] = useState(false);
@@ -207,19 +204,6 @@ export default function DesignRowManager({
     });
   }
 
-  async function refetchProjects() {
-    const res = await fetch("/api/homepage-designs?admin=true", { cache: "no-store" });
-    const data = await parseResponseJson<HomepageDesign[] | { error?: string }>(res);
-    if (!res.ok || !Array.isArray(data)) {
-      throw new Error(
-        !Array.isArray(data) && data.error ? data.error : "Failed to refresh designs"
-      );
-    }
-    const shaped = data.map(homepageDesignToProjectShape);
-    setProjects(shaped);
-    return shaped;
-  }
-
   async function persistLayout(updates: { rowProjects: Project[]; row: number }[]) {
     const items = updates.flatMap(({ rowProjects, row }) =>
       buildHomepageDesignReorderItems(
@@ -238,12 +222,6 @@ export default function DesignRowManager({
     if (!res.ok) {
       throw new Error(data.error || "Failed to save design order");
     }
-
-    router.refresh();
-  }
-
-  async function persistRowOrder(row: number, rowProjects: Project[]) {
-    await persistLayout([{ rowProjects, row }]);
   }
 
   function applyRowState(updates: Project[]) {
@@ -264,15 +242,28 @@ export default function DesignRowManager({
     }));
   }
 
+  function saveLayout(
+    updates: { rowProjects: Project[]; row: number }[],
+    snapshot: Project[],
+    successMessage: string
+  ) {
+    void persistLayout(updates).then(
+      () => flash(successMessage),
+      (err) => {
+        setProjects(snapshot);
+        flash(err instanceof Error ? err.message : "Failed to save", true);
+      }
+    );
+  }
+
   async function handleDrop(targetRow: number, targetIndex: number) {
-    if (!drag || busy || uploading) return;
+    if (!drag || uploading) return;
     if (drag.row === targetRow && drag.index === targetIndex) {
       setDrag(null);
       return;
     }
 
     const snapshot = projectsRef.current;
-    setBusy(true);
     setError("");
 
     try {
@@ -285,8 +276,8 @@ export default function DesignRowManager({
         sourceProjects.splice(targetIndex, 0, moved);
         const normalized = normalizeRowProjects(sourceProjects, sourceRow + 1);
         applyRowState(normalized);
-        await persistRowOrder(sourceRow + 1, normalized);
-        flash("Order saved.");
+        setDrag(null);
+        saveLayout([{ rowProjects: normalized, row: sourceRow + 1 }], snapshot, "Order saved.");
       } else {
         const targetProjects = [...rowGroups[targetRow]];
         const targetRowNum = targetRow + 1;
@@ -299,32 +290,29 @@ export default function DesignRowManager({
         const normalizedSource = normalizeRowProjects(sourceProjects, sourceRow + 1);
         const normalizedTarget = normalizeRowProjects(targetProjects, targetRowNum);
         applyRowState([...normalizedSource, ...normalizedTarget]);
-        await persistLayout([
-          { rowProjects: normalizedSource, row: sourceRow + 1 },
-          { rowProjects: normalizedTarget, row: targetRowNum },
-        ]);
-        flash("Design moved.");
+        setDrag(null);
+        saveLayout(
+          [
+            { rowProjects: normalizedSource, row: sourceRow + 1 },
+            { rowProjects: normalizedTarget, row: targetRowNum },
+          ],
+          snapshot,
+          "Design moved."
+        );
       }
     } catch (err) {
+      setProjects(snapshot);
       flash(err instanceof Error ? err.message : "Failed to save", true);
-      try {
-        await refetchProjects();
-      } catch {
-        setProjects(snapshot);
-      }
-    } finally {
-      setBusy(false);
       setDrag(null);
     }
   }
 
-  async function moveToRow(project: Project, targetRow: number) {
-    if (busy || uploading) return;
+  function moveToRow(project: Project, targetRow: number) {
+    if (uploading) return;
     const currentRow = clampMarqueeRow(project.metadata?.marqueeRow ?? 1, rowCount);
     if (currentRow === targetRow) return;
 
     const snapshot = projectsRef.current;
-    setBusy(true);
     setError("");
 
     try {
@@ -336,21 +324,17 @@ export default function DesignRowManager({
       const normalizedSource = normalizeRowProjects(sourceProjects, currentRow);
       const normalizedTarget = normalizeRowProjects(targetProjects, targetRow);
       applyRowState([...normalizedSource, ...normalizedTarget]);
-
-      await persistLayout([
-        { rowProjects: normalizedSource, row: currentRow },
-        { rowProjects: normalizedTarget, row: targetRow },
-      ]);
-      flash("Design moved.");
+      saveLayout(
+        [
+          { rowProjects: normalizedSource, row: currentRow },
+          { rowProjects: normalizedTarget, row: targetRow },
+        ],
+        snapshot,
+        "Design moved."
+      );
     } catch (err) {
+      setProjects(snapshot);
       flash(err instanceof Error ? err.message : "Failed to save", true);
-      try {
-        await refetchProjects();
-      } catch {
-        setProjects(snapshot);
-      }
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -369,7 +353,6 @@ export default function DesignRowManager({
       if (!res.ok) throw new Error(data.error || "Failed to update design");
       const shaped = homepageDesignToProjectShape(data);
       setProjects((prev) => prev.map((p) => (p.id === id ? shaped : p)));
-      router.refresh();
     } catch (err) {
       if (previous) {
         setProjects((prev) => prev.map((p) => (p.id === id ? previous : p)));
@@ -401,12 +384,6 @@ export default function DesignRowManager({
       });
       const data = await parseResponseJson<{ error?: string }>(res);
       if (!res.ok) throw new Error(data.error || "Failed to delete design");
-      try {
-        await refetchProjects();
-      } catch {
-        // Delete succeeded; keep optimistic UI if refresh lags.
-      }
-      router.refresh();
       flash("Design removed from homepage.");
     } catch (err) {
       setProjects(snapshot);
@@ -446,12 +423,6 @@ export default function DesignRowManager({
           const ids = new Set(createdProjects.map((p) => p.id));
           return [...prev.filter((p) => !ids.has(p.id)), ...createdProjects];
         });
-        try {
-          await refetchProjects();
-        } catch {
-          // Records were saved; keep created cards visible.
-        }
-        router.refresh();
         flash(
           `${result.created.length} design${result.created.length === 1 ? "" : "s"} added to row ${uploadRow}.`
         );
@@ -474,7 +445,7 @@ export default function DesignRowManager({
     }
   }
 
-  const interactionDisabled = busy || uploading;
+  const interactionDisabled = uploading;
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -498,10 +469,10 @@ export default function DesignRowManager({
         </div>
       </div>
 
-      {(busy || uploading) && (
+      {(uploading) && (
         <p className="text-zinc-400 text-sm bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 flex items-center gap-2">
           <Loader2 size={14} className="animate-spin shrink-0" />
-          {uploading ? uploadProgress || "Uploading…" : "Saving changes…"}
+          {uploadProgress || "Uploading…"}
         </p>
       )}
 

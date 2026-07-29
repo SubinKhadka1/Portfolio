@@ -15,6 +15,7 @@ export default function GalleryDesignCard({
   onDuplicate,
   onDelete,
   onToggleFeatured,
+  onImageLoad,
 }: {
   design: GalleryDesign;
   height?: number;
@@ -27,6 +28,7 @@ export default function GalleryDesignCard({
   onDuplicate: () => void;
   onDelete: () => void;
   onToggleFeatured: () => void;
+  onImageLoad?: (ratio: number) => void;
 }) {
   return (
     <article
@@ -45,6 +47,17 @@ export default function GalleryDesignCard({
           loading="lazy"
           className="be-card__img"
           draggable={false}
+          ref={(el) => {
+            if (el && el.complete && el.naturalWidth && el.naturalHeight && onImageLoad) {
+              onImageLoad(el.naturalWidth / el.naturalHeight);
+            }
+          }}
+          onLoad={(e) => {
+            const target = e.target as HTMLImageElement;
+            if (target.naturalWidth && target.naturalHeight && onImageLoad) {
+              onImageLoad(target.naturalWidth / target.naturalHeight);
+            }
+          }}
         />
         {design.metadata?.featured ? (
           <span className="be-card__star" aria-hidden>

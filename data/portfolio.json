@@ -14,7 +14,11 @@
       "metadata": {
         "color": "from-violet-700 to-indigo-900",
         "aspectRatio": "square",
-        "marqueeRow": 1
+        "marqueeRow": 1,
+        "homepageSortOrder": 1000,
+        "gallerySortOrder": 1000,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T05:46:52.549Z",
       "updated_at": "2026-06-22T09:11:30.813Z",
@@ -34,7 +38,11 @@
       "metadata": {
         "color": "from-yellow-700 to-orange-900",
         "aspectRatio": "portrait",
-        "marqueeRow": 1
+        "marqueeRow": 1,
+        "homepageSortOrder": 1001,
+        "gallerySortOrder": 1001,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T05:46:52.549Z",
       "updated_at": "2026-06-22T09:11:30.813Z",
@@ -54,7 +62,11 @@
       "metadata": {
         "color": "from-green-700 to-emerald-900",
         "aspectRatio": "square",
-        "marqueeRow": 1
+        "marqueeRow": 1,
+        "homepageSortOrder": 1002,
+        "gallerySortOrder": 1002,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T05:46:52.549Z",
       "updated_at": "2026-06-22T09:11:30.813Z",
@@ -74,7 +86,11 @@
       "metadata": {
         "color": "from-purple-700 to-fuchsia-900",
         "aspectRatio": "square",
-        "marqueeRow": 1
+        "marqueeRow": 1,
+        "homepageSortOrder": 1003,
+        "gallerySortOrder": 1003,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T05:46:52.549Z",
       "updated_at": "2026-06-22T09:11:30.813Z",
@@ -94,7 +110,11 @@
       "metadata": {
         "color": "from-blue-700 to-indigo-900",
         "aspectRatio": "square",
-        "marqueeRow": 1
+        "marqueeRow": 1,
+        "homepageSortOrder": 1004,
+        "gallerySortOrder": 1004,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T05:46:52.549Z",
       "updated_at": "2026-06-22T09:11:30.813Z",
@@ -114,7 +134,11 @@
       "metadata": {
         "color": "from-violet-700 to-indigo-900",
         "aspectRatio": "square",
-        "marqueeRow": 1
+        "marqueeRow": 1,
+        "homepageSortOrder": 1005,
+        "gallerySortOrder": 1005,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T07:40:41.769Z",
       "updated_at": "2026-06-22T09:11:30.813Z",
@@ -134,7 +158,11 @@
       "metadata": {
         "color": "from-yellow-700 to-orange-900",
         "aspectRatio": "portrait",
-        "marqueeRow": 2
+        "marqueeRow": 2,
+        "homepageSortOrder": 2000,
+        "gallerySortOrder": 2000,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T05:46:52.549Z",
       "updated_at": "2026-06-20T05:46:52.549Z",
@@ -154,7 +182,11 @@
       "metadata": {
         "color": "from-pink-700 to-rose-900",
         "aspectRatio": "square",
-        "marqueeRow": 2
+        "marqueeRow": 2,
+        "homepageSortOrder": 2001,
+        "gallerySortOrder": 2001,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T05:46:52.549Z",
       "updated_at": "2026-06-20T05:46:52.549Z",
@@ -174,7 +206,11 @@
       "metadata": {
         "color": "from-red-700 to-yellow-900",
         "aspectRatio": "square",
-        "marqueeRow": 2
+        "marqueeRow": 2,
+        "homepageSortOrder": 2002,
+        "gallerySortOrder": 2002,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T05:46:52.549Z",
       "updated_at": "2026-06-20T05:46:52.549Z",
@@ -194,7 +230,11 @@
       "metadata": {
         "color": "from-emerald-700 to-teal-900",
         "aspectRatio": "portrait",
-        "marqueeRow": 2
+        "marqueeRow": 2,
+        "homepageSortOrder": 2003,
+        "gallerySortOrder": 2003,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T05:46:52.549Z",
       "updated_at": "2026-06-20T05:46:52.549Z",
@@ -214,7 +254,11 @@
       "metadata": {
         "color": "from-blue-700 to-cyan-900",
         "aspectRatio": "portrait",
-        "marqueeRow": 2
+        "marqueeRow": 2,
+        "homepageSortOrder": 2004,
+        "gallerySortOrder": 2004,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T05:46:52.549Z",
       "updated_at": "2026-06-20T05:46:52.549Z",
@@ -234,7 +278,11 @@
       "metadata": {
         "color": "from-slate-700 to-gray-900",
         "aspectRatio": "square",
-        "marqueeRow": 3
+        "marqueeRow": 3,
+        "homepageSortOrder": 3000,
+        "gallerySortOrder": 3000,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T05:46:52.549Z",
       "updated_at": "2026-06-22T09:11:30.813Z",
@@ -254,7 +302,11 @@
       "metadata": {
         "color": "from-sky-700 to-blue-900",
         "aspectRatio": "square",
-        "marqueeRow": 3
+        "marqueeRow": 3,
+        "homepageSortOrder": 3001,
+        "gallerySortOrder": 3001,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T05:46:52.549Z",
       "updated_at": "2026-06-22T09:11:30.813Z",
@@ -274,7 +326,11 @@
       "metadata": {
         "color": "from-blue-700 to-cyan-900",
         "aspectRatio": "portrait",
-        "marqueeRow": 3
+        "marqueeRow": 3,
+        "homepageSortOrder": 3002,
+        "gallerySortOrder": 3002,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T05:46:52.549Z",
       "updated_at": "2026-06-22T09:11:30.813Z",
@@ -294,7 +350,11 @@
       "metadata": {
         "color": "from-violet-700 to-indigo-900",
         "aspectRatio": "square",
-        "marqueeRow": 3
+        "marqueeRow": 3,
+        "homepageSortOrder": 3003,
+        "gallerySortOrder": 3003,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T07:12:51.649Z",
       "updated_at": "2026-06-22T09:11:30.813Z",
@@ -314,7 +374,11 @@
       "metadata": {
         "color": "from-violet-700 to-indigo-900",
         "aspectRatio": "portrait",
-        "marqueeRow": 3
+        "marqueeRow": 3,
+        "homepageSortOrder": 3004,
+        "gallerySortOrder": 3004,
+        "showOnHomepage": true,
+        "showInGallery": true
       },
       "created_at": "2026-06-20T07:36:53.665Z",
       "updated_at": "2026-06-22T09:11:30.813Z",
@@ -1371,22 +1435,6 @@
       "updated_at": "2026-06-22T09:11:30.813Z"
     },
     {
-      "id": "067e15de-22c1-4453-b507-4b772ed01691",
-      "title": "TIRA MISS YOU",
-      "description": "",
-      "media_url": "/designs/1781941235880-TIRA---MISS---YOU.jpg",
-      "sort_order": 1005,
-      "published": true,
-      "metadata": {
-        "color": "from-violet-700 to-indigo-900",
-        "aspectRatio": "square",
-        "marqueeRow": 1
-      },
-      "source_gallery_design_id": null,
-      "created_at": "2026-06-20T07:40:41.769Z",
-      "updated_at": "2026-06-22T09:11:30.813Z"
-    },
-    {
       "id": "a91eccdf-9302-4159-953c-d3506c28cec1",
       "title": "New Year 2083",
       "description": "",
@@ -1528,22 +1576,6 @@
       },
       "source_gallery_design_id": null,
       "created_at": "2026-06-20T07:12:51.649Z",
-      "updated_at": "2026-06-22T09:11:30.813Z"
-    },
-    {
-      "id": "627bd7c0-4ff8-407a-a5cf-e45ce36f95a1",
-      "title": "1burgerFLYER",
-      "description": "",
-      "media_url": "/designs/1781941005341-1burgerFLYER.jpg",
-      "sort_order": 3004,
-      "published": true,
-      "metadata": {
-        "color": "from-violet-700 to-indigo-900",
-        "aspectRatio": "portrait",
-        "marqueeRow": 3
-      },
-      "source_gallery_design_id": null,
-      "created_at": "2026-06-20T07:36:53.665Z",
       "updated_at": "2026-06-22T09:11:30.813Z"
     }
   ],
