@@ -183,21 +183,36 @@ function migrateStore(store: PortfolioStore): PortfolioStore {
     return p;
   });
 
-  const rowMigration = migrateDesignRows(store.design);
-  if (rowMigration.changed) {
-    store.design = rowMigration.designs;
+  // Design row migration — only run once, then set flag so admin order is never re-shuffled.
+  if (!store._design_rows_migrated) {
+    const rowMigration = migrateDesignRows(store.design);
+    if (rowMigration.changed) {
+      store.design = rowMigration.designs;
+      changed = true;
+    }
+    store._design_rows_migrated = true;
     changed = true;
   }
 
-  const placementMigration = migrateDesignPlacement(store.design);
-  if (placementMigration.changed) {
-    store.design = placementMigration.designs;
+  // Design placement migration — only run once.
+  if (!store._design_placement_migrated) {
+    const placementMigration = migrateDesignPlacement(store.design);
+    if (placementMigration.changed) {
+      store.design = placementMigration.designs;
+      changed = true;
+    }
+    store._design_placement_migrated = true;
     changed = true;
   }
 
-  const clientRowMigration = migrateClientRows(store.client);
-  if (clientRowMigration.changed) {
-    store.client = clientRowMigration.clients;
+  // Client row migration — only run once.
+  if (!store._client_rows_migrated) {
+    const clientRowMigration = migrateClientRows(store.client);
+    if (clientRowMigration.changed) {
+      store.client = clientRowMigration.clients;
+      changed = true;
+    }
+    store._client_rows_migrated = true;
     changed = true;
   }
 
