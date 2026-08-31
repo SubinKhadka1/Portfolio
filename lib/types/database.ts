@@ -189,3 +189,29 @@ export type ClientItem = {
   marqueeRow?: 1 | 2 | 3;
   sortOrder?: number;
 };
+
+export type Testimonial = {
+  id: string;
+  quote: string;
+  author: string;
+  role?: string;
+  initials: string;
+  rating: number;
+  gradient: string;
+  published: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TestimonialInput = {
+  quote: string;
+  author: string;
+  role?: string;
+  initials?: string;
+  rating?: number;
+  gradient?: string;
+  published?: boolean;
+  sort_order?: number;
+};
+

@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
+// import { Inter } from "next/font/google"
+// const inter = Inter({ subsets: ["latin"] })
+// Use a simple system font class
+const fallbackFont = "font-sans"
+import "./globals.css"
 
-const inter = Inter({ subsets: ["latin"] });
+// const inter = Inter({ subsets: ["latin"] }) // disabled
 
 export const metadata: Metadata = {
   title: "Subin Khadka | Graphic Designer & Video Editor",
@@ -23,7 +26,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={fallbackFont}>{children}</body>
     </html>
   );
 }

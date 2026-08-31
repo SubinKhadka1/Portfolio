@@ -353,7 +353,12 @@ function appendProjectToStore(
   const maxOrder = store[type].reduce((max, p) => Math.max(max, p.sort_order), -1);
 
   let sortOrder = input.sort_order ?? maxOrder + 1;
-  if (type === "design" || type === "client") {
+  // For designs, ensure we do not reshuffle existing manual ordering.
+  if (type === "design") {
+    // If admin did not provide a specific sort_order, place the new design after the current highest order.
+    const existingMax = store.design.reduce((m, p) => Math.max(m, p.sort_order), maxOrder);
+    sortOrder = input.sort_order ?? existingMax + 1;
+  } else if (type === "client") {
     const row = clampMarqueeRow(input.metadata?.marqueeRow ?? 1);
     const inRow = store[type].filter(
       (p) => clampMarqueeRow(p.metadata?.marqueeRow ?? 1) === row

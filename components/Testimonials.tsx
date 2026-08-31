@@ -1,34 +1,66 @@
 "use client";
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import type { Testimonial } from "@/lib/types/database";
 
-const testimonials = [
+const DEFAULT_TESTIMONIALS: Testimonial[] = [
   {
+    id: "default-1",
     quote: "Subin completely transformed our social media presence. His video editing skills are next-level. The food reels he made for BEANS n BUN brought in so much customer engagement and foot traffic!",
     author: "Prabin Sharma",
     role: "CEO, BEANS n BUN",
     initials: "PS",
     rating: 5,
     gradient: "from-purple-500 to-indigo-500",
+    published: true,
+    sort_order: 1000,
+    created_at: "",
+    updated_at: "",
   },
   {
+    id: "default-2",
     quote: "The brand campaign posters and promotional video ads Subin created for our visa services got us thousands of qualified leads. A true creative genius who blends aesthetics with marketing strategy perfectly.",
     author: "Samikshya Thapa",
     role: "Marketing Director, Success Education",
     initials: "ST",
     rating: 5,
     gradient: "from-blue-500 to-teal-500",
+    published: true,
+    sort_order: 1001,
+    created_at: "",
+    updated_at: "",
   },
   {
+    id: "default-3",
     quote: "Subin consistently delivers top-tier motion graphics and logo animations. He understands the brief perfectly and always goes the extra mile. Working with him was a breeze and worth every penny.",
     author: "Ashish Shrestha",
     role: "Creative Lead, Digital Growth Nepal",
     initials: "AS",
     rating: 5,
     gradient: "from-pink-500 to-purple-500",
-  }
+    published: true,
+    sort_order: 1002,
+    created_at: "",
+    updated_at: "",
+  },
 ];
 
 export default function Testimonials() {
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(DEFAULT_TESTIMONIALS);
+
+  useEffect(() => {
+    fetch("/api/testimonials")
+      .then((r) => r.json())
+      .then((data: Testimonial[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setTestimonials(data);
+        }
+      })
+      .catch(() => {
+        // Keep defaults on network failure
+      });
+  }, []);
+
   return (
     <section id="testimonials" className="py-16 md:py-24 bg-black relative overflow-hidden">
       <div className="section-container">
@@ -47,7 +79,7 @@ export default function Testimonials() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-6xl mx-auto">
           {testimonials.map((test, i) => (
             <motion.div
-              key={i}
+              key={test.id}
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -77,9 +109,11 @@ export default function Testimonials() {
                   <h4 className="text-white font-bold text-sm tracking-wide">
                     {test.author}
                   </h4>
-                  <p className="text-gray-500 text-xs mt-0.5">
-                    {test.role}
-                  </p>
+                  {test.role && (
+                    <p className="text-gray-500 text-xs mt-0.5">
+                      {test.role}
+                    </p>
+                  )}
                 </div>
               </div>
             </motion.div>

@@ -54,8 +54,11 @@ export async function getLocalHomepageDesign(id: string): Promise<HomepageDesign
   return store.homepage_designs.find((d) => d.id === id) ?? null;
 }
 
-function nextGallerySortOrder(store: PortfolioStore) {
-  const max = store.gallery_designs.reduce((highest, d) => Math.max(highest, d.sort_order), 0);
+function nextGallerySortOrder(store: PortfolioStore, categoryId: string | null = null) {
+  const filtered = categoryId === null
+    ? store.gallery_designs
+    : store.gallery_designs.filter((d) => (d.category_id ?? null) === categoryId);
+  const max = filtered.reduce((highest, d) => Math.max(highest, d.sort_order), 0);
   return max + 1_000;
 }
 
@@ -79,7 +82,7 @@ function appendGalleryDesign(
     description: input.description || "",
     media_url: input.media_url,
     category_id: input.category_id ?? null,
-    sort_order: input.sort_order ?? nextGallerySortOrder(store),
+    sort_order: input.sort_order ?? nextGallerySortOrder(store, input.category_id ?? null),
     published: input.published ?? true,
     metadata: input.metadata || {},
     created_at: now,
@@ -185,6 +188,13 @@ export async function updateLocalGalleryDesign(
     if (index === -1) return;
 
     const existing = store.gallery_designs[index];
+    // Determine new sort order if category changes without explicit sort_order
+    let newSortOrder = existing.sort_order;
+    if (patch.category_id !== undefined && patch.sort_order === undefined) {
+      newSortOrder = nextGallerySortOrder(store, patch.category_id ?? null);
+    } else if (patch.sort_order !== undefined) {
+      newSortOrder = patch.sort_order;
+    }
     updated = {
       ...existing,
       ...(patch.title !== undefined && { title: patch.title }),
@@ -192,7 +202,7 @@ export async function updateLocalGalleryDesign(
       ...(patch.media_url !== undefined && { media_url: patch.media_url }),
       ...(patch.category_id !== undefined && { category_id: patch.category_id }),
       ...(patch.published !== undefined && { published: patch.published }),
-      ...(patch.sort_order !== undefined && { sort_order: patch.sort_order }),
+      sort_order: newSortOrder,
       ...(patch.metadata !== undefined && {
         metadata: { ...existing.metadata, ...patch.metadata },
       }),
