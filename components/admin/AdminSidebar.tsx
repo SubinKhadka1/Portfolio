@@ -24,7 +24,7 @@ const links = [
   { href: "/admin/categories", label: "Design Gallery", icon: FolderOpen },
   { href: "/admin/projects?type=video", label: "Videos", icon: Video },
   { href: "/admin/projects?type=client", label: "Clients", icon: Users },
-  { href: "/admin/testimonials", label: "Testimonials", icon: MessageSquare },
+  { href: "/admin/testimonials", label: "Client Testimonials", icon: MessageSquare },
   { href: "/admin/settings", label: "Site Settings", icon: Settings },
 ];
 
