@@ -2,6 +2,8 @@ import { randomUUID } from "crypto";
 import { ensurePortfolioStore, updatePortfolioStore } from "@/lib/local-portfolio";
 import type { Testimonial, TestimonialInput } from "@/lib/types/database";
 
+import type { PortfolioStore } from "@/lib/portfolio-store-types";
+
 export async function getLocalTestimonials(options?: { admin?: boolean }): Promise<Testimonial[]> {
   const store = await ensurePortfolioStore();
   const list = [...(store.testimonials || [])].sort((a, b) => a.sort_order - b.sort_order);
@@ -14,9 +16,9 @@ export async function getLocalTestimonial(id: string): Promise<Testimonial | nul
   return store.testimonials?.find((t) => t.id === id) ?? null;
 }
 
-function nextTestimonialSortOrder(store: any) {
+function nextTestimonialSortOrder(store: PortfolioStore) {
   const testimonials = store.testimonials || [];
-  const max = testimonials.reduce((highest: number, t: any) => Math.max(highest, t.sort_order || 0), 0);
+  const max = testimonials.reduce((highest: number, t: Testimonial) => Math.max(highest, t.sort_order || 0), 0);
   return max + 1000;
 }
 
